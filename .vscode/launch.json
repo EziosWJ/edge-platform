@@ -1,0 +1,35 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "go",
+            "name": "Go API (dev)",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/server/cmd/api",
+            "cwd": "${workspaceFolder}/server",
+            "env": {
+                "APP_ENV": "dev"
+            }
+        },
+        {
+            "type": "go",
+            "name": "Go Migration (dev)",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/server/cmd/migrate",
+            "cwd": "${workspaceFolder}/server",
+            "args": [
+                "up",
+                "--kind",
+                "all"
+            ],
+            "env": {
+                "APP_ENV": "dev"
+            }
+        }
+    ]
+}

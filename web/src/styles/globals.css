@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #1677ff;
+  --color-primary-hover: #155eef;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #4b5563;
+  --color-text-tertiary: #6b7280;
+  --color-border: #e5e7eb;
+  --color-background: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --color-info: #0891b2;
+  --color-overlay-background: rgb(2 6 23 / 0.3);
+
+  /* Typography tokens: values follow design-system/MASTER.md. */
+  --font-size-page-title: 24px;
+  --line-height-page-title: 32px;
+  --font-size-section-title: 18px;
+  --line-height-section-title: 28px;
+  --font-size-card-title: 16px;
+  --line-height-card-title: 24px;
+  --font-size-body: 14px;
+  --line-height-body: 22px;
+  --font-size-form-label: 14px;
+  --line-height-form-label: 22px;
+  --font-size-body-secondary: 13px;
+  --line-height-body-secondary: 20px;
+  --font-size-helper: 12px;
+  --line-height-helper: 18px;
+  --font-size-table-cell: 14px;
+  --line-height-table-cell: 22px;
+
+  /* 4px spacing grid. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Control and card dimensions. */
+  --control-height-sm: 32px;
+  --control-height-md: 36px;
+  --control-height-lg: 40px;
+  --control-height-textarea: 96px;
+  --card-padding-compact: 16px;
+  --card-padding: 20px;
+
+  /* Standard modal widths. Existing page-specific widths remain unchanged. */
+  --modal-width-sm: 480px;
+  --modal-width-md: 640px;
+  --modal-width-lg: 800px;
+
+  /* Semantic radius levels. --radius-admin remains the existing card value. */
+  --radius-tight: 4px;
+  --radius-tag: 6px;
+  --radius-control: 8px;
+  --radius-card: 10px;
+  --radius-card-lg: 12px;
+  --radius-pill: 9999px;
+
+  /* The current system uses one intentionally subtle elevation level. */
+  --shadow-none: none;
+  --shadow-subtle: 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow-floating: var(--shadow-subtle);
+
+  /* Subtle state surfaces mirror the existing Tailwind palette in use. */
+  --color-success-background: #f0fdf4;
+  --color-success-border: #dcfce7;
+  --color-warning-background: #fffbeb;
+  --color-warning-border: #fef3c7;
+  --color-error-background: #fef2f2;
+  --color-error-border: #fee2e2;
+  --color-info-background: #ecfeff;
+  --color-info-border: #cffafe;
+  --color-neutral-background: #f8fafc;
+  --color-neutral-border: #e2e8f0;
+
+  --radius-admin: 10px;
+  --shadow-admin: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-family:
+    Inter,
+    "PingFang SC",
+    "Microsoft YaHei",
+    "Noto Sans SC",
+    sans-serif;
+  font-size: 14px;
+  line-height: 22px;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+
+# 实际环境配置（含凭据）不提交；example 模板需要提交，故反向排除
+configs/config.dev.yaml
+configs/config.prod.yaml
+!configs/config.dev.example.yaml
+!configs/config.prod.example.yaml
+coverage.out

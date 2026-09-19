@@ -1,0 +1,44 @@
+# CLAUDE.md
+
+请使用中文交流。
+
+## 项目
+
+Edge Platform 是与 Edge Collector 配套的云端工业 IoT / HMI 平台。
+
+```text
+project/
+├── web/       # React SPA
+├── server/    # Go Cloud Server
+├── docs/
+└── CONTEXT.md
+```
+
+开始任务前先读 `CONTEXT.md` 和相关 ADR。不要把 Edge Collector 的 Modbus、串口、寄存器和 Starlark 内部概念直接扩散到 Cloud HMI 领域。
+
+## 开发入口
+
+优先使用根目录 Taskfile：
+
+- `task db:migrate`
+- `task api`
+- `task web`
+- `task dev`
+- `task backend:check`
+- `task frontend:lint`
+- `task frontend:build`
+- `task check`
+
+Cloud 正式生产数据库为 PostgreSQL。SQLite 仅保留本地/测试兼容，不要把它当作新 Cloud 业务的生产约束。
+
+## 架构规则
+
+- 第一阶段保持 Modular Monolith。
+- 业务代码按领域模块组织，不创建全局 controller/service/repository 目录。
+- Handler 负责 HTTP；Service 负责业务规则；Repository 负责持久化。
+- MQTT 接入在 Server，不让正式 Web 业务直接连接 Broker。
+- HMI 绑定 DataPoint/Command，不直接绑定寄存器或 MQTT Topic。
+- 不提前引入微服务、Kafka、Redis、Gateway、Kubernetes。
+- 不恢复脚手架 Demo 或伪造 Dashboard 数据。
+
+具体边界见 `docs/adr/0001-cloud-platform-scope-and-edge-cloud-boundary.md`。

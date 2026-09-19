@@ -1,0 +1,24 @@
+# 复制为 configs/config.dev.yaml 后填写本地凭据；实际文件不提交 Git。
+swagger:
+  enabled: true
+
+database:
+  driver: postgres
+  url: postgres://127.0.0.1:54329/edge_platform?sslmode=disable
+  username: edge_platform
+  password: change-me
+
+jwt:
+  secret: replace-with-a-random-local-development-jwt-secret
+
+auth:
+  login_guard:
+    ip_max_attempts: 20
+    username_max_attempts: 5
+
+file:
+  storage_root: /absolute/path/to/edge-platform/.data/uploads
+
+log:
+  level: debug
+  format: text

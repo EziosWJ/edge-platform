@@ -1,0 +1,25 @@
+# Cloud 正式生产配置模板：PostgreSQL 是唯一正式生产数据库目标。
+# 实际 configs/config.prod.yaml 由部署系统提供，不提交 Git。
+swagger:
+  enabled: false
+
+database:
+  driver: postgres
+  url: postgres://db.example.internal:5432/edge_platform?sslmode=require
+  username: change-me
+  password: change-me
+
+jwt:
+  secret: change-me
+
+auth:
+  login_guard:
+    ip_max_attempts: 20
+    username_max_attempts: 5
+
+file:
+  storage_root: /var/lib/edge-platform/uploads
+
+log:
+  level: info
+  format: json

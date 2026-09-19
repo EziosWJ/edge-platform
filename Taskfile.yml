@@ -1,0 +1,102 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+env:
+  APP_ENV: dev
+  GOCACHE: '{{.ROOT_DIR}}/.task/go-build'
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  db:migrate:
+    desc: Apply PostgreSQL schema and seed migrations
+    dir: server
+    cmds:
+      - go run ./cmd/migrate up --kind all
+
+  db:migrate:schema:
+    desc: Apply PostgreSQL schema migrations only
+    dir: server
+    cmds:
+      - go run ./cmd/migrate up --kind schema
+
+  db:migrate:seed:
+    desc: Apply PostgreSQL seed migrations only
+    dir: server
+    cmds:
+      - go run ./cmd/migrate up --kind seed
+
+  api:
+    desc: Start Edge Platform server
+    dir: server
+    cmds:
+      - go run ./cmd/api
+
+  web:
+    desc: Start Edge Platform web
+    dir: web
+    cmds:
+      - npm run dev
+
+  dev:
+    desc: Migrate PostgreSQL and start server and web
+    deps:
+      - db:migrate
+    cmds:
+      - task --parallel api web
+
+  backend:test:
+    desc: Run server unit tests
+    dir: server
+    cmds:
+      - go test ./...
+
+  backend:check:
+    desc: Run server tests and vet
+    dir: server
+    cmds:
+      - go test ./...
+      - go vet ./...
+
+  backend:integration:
+    desc: Run PostgreSQL integration tests
+    dir: server
+    cmds:
+      - go test -tags=integration ./integration -run 'Postgres|Auth|RBAC|SysConfig|Department|Dictionary|Login|File|Notification|UserPage' -count=1
+
+  frontend:lint:
+    desc: Run web lint
+    dir: web
+    cmds:
+      - npm run lint
+
+  frontend:build:
+    desc: Build web
+    dir: web
+    cmds:
+      - npm run build
+
+  check:
+    desc: Run server and web checks
+    deps:
+      - backend:check
+      - frontend:lint
+      - frontend:build
+
+  test:
+    desc: Run default test suite
+    deps:
+      - backend:test
+
+  build:
+    desc: Build server and web
+    deps:
+      - frontend:build
+    dir: server
+    cmds:
+      - go build ./cmd/api ./cmd/migrate

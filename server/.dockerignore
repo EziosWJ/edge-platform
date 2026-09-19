@@ -1,0 +1,8 @@
+.git
+.env
+.env.*
+!.env.example
+coverage.out
+configs/config.dev.yaml
+configs/config.test.yaml
+configs/config.prod.yaml
