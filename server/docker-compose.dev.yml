@@ -40,10 +40,12 @@ services:
       target: api
     environment:
       APP_ENV: dev
+      APP_HTTP__ADDRESS: ":8080"
       APP_DATABASE__URL: postgres://postgres:5432/${POSTGRES_DB:-edge_platform}?sslmode=disable
       APP_DATABASE__USERNAME: ${POSTGRES_USER:-edge_platform}
       APP_DATABASE__PASSWORD: ${POSTGRES_PASSWORD}
       APP_JWT__SECRET: ${APP_JWT__SECRET:?set APP_JWT__SECRET in .env}
+      APP_FILE__STORAGE_ROOT: /var/lib/edge-platform/uploads
       APP_SWAGGER__ENABLED: "true"
       APP_LOG__LEVEL: debug
       APP_LOG__FORMAT: text

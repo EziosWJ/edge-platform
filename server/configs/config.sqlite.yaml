@@ -1,6 +1,6 @@
 # SQLite profile: local/test compatibility only; not a Cloud production deployment target.
 # APP_ENV remains dev/test/prod; this file only switches the database backend.
-# The relative path is resolved from the edge-platform directory.
+# The relative path is resolved from the server working directory.
 database:
   driver: sqlite
   url: .data/edge-platform.db

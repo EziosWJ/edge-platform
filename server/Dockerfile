@@ -19,9 +19,7 @@ FROM alpine:3.22 AS runtime
 RUN addgroup -S app && adduser -S -G app app
 WORKDIR /app
 COPY configs ./configs
-# Named-volume mount point: must exist and be writable by the app user,
-# otherwise file uploads fail with permission denied after the first boot.
-RUN mkdir -p /var/lib/server/uploads && chown -R app:app /var/lib/server
+RUN mkdir -p /var/lib/edge-platform/uploads && chown -R app:app /var/lib/edge-platform
 USER app
 
 FROM runtime AS api
