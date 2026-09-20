@@ -22,6 +22,32 @@ jobs:
       - run: go test ./...
       - run: go vet ./...
 
+  mqtt-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: Pull pinned Mosquitto image
+        run: docker pull eclipse-mosquitto:2.0.22
+      - name: Record Mosquitto image digest
+        run: |
+          digest="$(docker image inspect eclipse-mosquitto:2.0.22 --format '{{join .RepoDigests "\n"}}' | head -n 1)"
+          if [[ "$digest" != *"@sha256:"* ]]; then
+            echo "Mosquitto image has no content digest: $digest" >&2
+            exit 1
+          fi
+          echo "Using Mosquitto image digest: $digest"
+          {
+            echo "### Mosquitto integration image"
+            echo
+            echo "\`$digest\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Run MQTT integration tests
+        run: task backend:mqtt-integration
+
   web:
     runs-on: ubuntu-latest
     defaults:
