@@ -14,6 +14,8 @@
 
 目标：Cloud Server 稳定连接 MQTT Broker，订阅并解析 Edge Collector MQTT v1 消息。
 
+设计决策见 [ADR-0010: MQTT Ingest Runtime 与交付语义](adr/0010-mqtt-ingest-runtime-and-delivery-semantics.md)。
+
 In Scope：
 - MQTT configuration
 - runtime lifecycle

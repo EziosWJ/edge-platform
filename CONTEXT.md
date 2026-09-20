@@ -105,6 +105,21 @@ server/internal/
 
 **HMI**：基于 DataPoint 和 Command 的组态展示/控制页面。编辑器计划使用 AntV X6；持久化使用自定义 HMI schema，不把 X6 JSON 直接当作不可替换的领域模型。
 
+**MQTT Ingest**：Cloud 接收并解析 Edge Collector MQTT v1 上行消息的接入能力。它产出带接收元数据的强类型接入消息，但不代表 Edge、Device、DataPoint 或 Event 已完成领域建模或持久化。
+_Avoid_：MQTT 业务模型、MQTT 领域模型
+
+**MQTT Runtime**：Edge Platform Server 进程内负责 Broker 连接、订阅恢复和 MQTT Ingest 生命周期的运行组件。
+_Avoid_：MQTT 微服务、MQTT Gateway
+
+**SourceTimestamp**：Edge Collector 写入消息 envelope 的来源时间。它用于表达来源侧观察或产生消息的时间，不等同于 Cloud 收到消息的时间。
+_Avoid_：ReceivedAt、Cloud 时间
+
+**ReceivedAt**：Cloud MQTT Ingest 收到消息时记录的本地时间。它不替代 SourceTimestamp，也不单独证明 Edge 或 Device 当前在线。
+_Avoid_：SourceTimestamp、设备时间
+
+**DeviceEvent**：Edge Collector 通过 `device-event/v1` 上报的通用设备事件。它不是 Alarm；只有后续领域规则明确赋予告警语义时才成为告警。
+_Avoid_：Alarm、告警
+
 ## Edge / Cloud 边界
 
 Cloud 可以依赖 Edge Collector 已公开的 MQTT contract，但不得把这些 Edge 内部概念扩散到 HMI 和 Cloud 业务层：
