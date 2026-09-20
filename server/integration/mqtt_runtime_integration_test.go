@@ -213,6 +213,7 @@ func publishMQTTMessage(t *testing.T, endpoint mqttEndpoint, tlsConfig *tls.Conf
 	if !publish.WaitTimeout(10*time.Second) || publish.Error() != nil {
 		t.Fatalf("publish %s: %v", topic, publish.Error())
 	}
+	client.Disconnect(100)
 }
 
 func ingressPayload(schema, messageID, edgeID, deviceID string) []byte {

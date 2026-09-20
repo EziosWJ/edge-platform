@@ -17,9 +17,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	mqtt311 "github.com/eclipse/paho.mqtt.golang"
 )
 
 const mosquittoImage = "eclipse-mosquitto:2.0.22"
@@ -98,6 +101,54 @@ func TestMosquittoFixtureSupportsMTLSAndRestart(t *testing.T) {
 	broker.restart(t)
 }
 
+func TestMosquittoFixtureQueuesQoS1ForPersistentClient(t *testing.T) {
+	broker := startMQTTBroker(t, mqttBrokerOptions{})
+	clientID := fmt.Sprintf("persistent-fixture-%d", time.Now().UnixNano())
+	topic := "edge/edge-1/device/device-1/event"
+	received := make(chan struct{}, 1)
+
+	firstOptions := mqtt311.NewClientOptions().
+		AddBroker(broker.plaintext.URL("mqtt")).
+		SetClientID(clientID).
+		SetCleanSession(false).
+		SetAutoReconnect(false).
+		SetConnectRetry(false)
+	first := mqtt311.NewClient(firstOptions)
+	connect := first.Connect()
+	if !connect.WaitTimeout(10*time.Second) || connect.Error() != nil {
+		t.Fatalf("connect persistent fixture client: %v", connect.Error())
+	}
+	subscribe := first.Subscribe("edge/+/device/+/event", 1, nil)
+	if !subscribe.WaitTimeout(10*time.Second) || subscribe.Error() != nil {
+		t.Fatalf("subscribe persistent fixture client: %v", subscribe.Error())
+	}
+	first.Disconnect(100)
+
+	publishMQTTMessage(t, broker.plaintext, nil, topic, ingressPayload("device-event/v1", "persistent-fixture", "edge-1", "device-1"), 1)
+
+	secondOptions := mqtt311.NewClientOptions().
+		AddBroker(broker.plaintext.URL("mqtt")).
+		SetClientID(clientID).
+		SetCleanSession(false).
+		SetAutoReconnect(false).
+		SetConnectRetry(false).
+		SetDefaultPublishHandler(func(_ mqtt311.Client, _ mqtt311.Message) {
+			received <- struct{}{}
+		})
+	second := mqtt311.NewClient(secondOptions)
+	secondConnect := second.Connect()
+	if !secondConnect.WaitTimeout(10*time.Second) || secondConnect.Error() != nil {
+		t.Fatalf("reconnect persistent fixture client: %v", secondConnect.Error())
+	}
+	t.Cleanup(func() { second.Disconnect(100) })
+
+	select {
+	case <-received:
+	case <-time.After(10 * time.Second):
+		t.Fatal("persistent fixture client did not receive queued QoS1 message")
+	}
+}
+
 func startMQTTBroker(t *testing.T, options mqttBrokerOptions) *mqttBrokerFixture {
 	t.Helper()
 	requireDocker(t)
@@ -113,6 +164,7 @@ func startMQTTBroker(t *testing.T, options mqttBrokerOptions) *mqttBrokerFixture
 	if err := os.MkdirAll(configDir, 0o755); err != nil {
 		t.Fatalf("create Mosquitto config directory: %v", err)
 	}
+	ports := freeTCPPorts(t, 2)
 
 	tlsFiles := createMQTTTLSMaterial(t, configDir)
 	writeMosquittoConfig(t, configDir, options.requireClientCertificate)
@@ -125,8 +177,8 @@ func startMQTTBroker(t *testing.T, options mqttBrokerOptions) *mqttBrokerFixture
 
 	command := exec.Command(
 		"docker", "run", "--detach", "--rm", "--name", container,
-		"--publish", "127.0.0.1::1883/tcp",
-		"--publish", "127.0.0.1::8883/tcp",
+		"--publish", "127.0.0.1:"+strconv.Itoa(ports[0])+":1883/tcp",
+		"--publish", "127.0.0.1:"+strconv.Itoa(ports[1])+":8883/tcp",
 		"--volume", configDir+":/mosquitto/config:ro",
 		mosquittoImage,
 		"mosquitto", "-c", "/mosquitto/config/mosquitto.conf",
@@ -137,8 +189,8 @@ func startMQTTBroker(t *testing.T, options mqttBrokerOptions) *mqttBrokerFixture
 
 	broker := &mqttBrokerFixture{
 		container: container,
-		plaintext: mqttEndpoint{Host: "127.0.0.1", Port: publishedPort(t, container, "1883/tcp")},
-		tls:       mqttEndpoint{Host: "127.0.0.1", Port: publishedPort(t, container, "8883/tcp")},
+		plaintext: mqttEndpoint{Host: "127.0.0.1", Port: ports[0]},
+		tls:       mqttEndpoint{Host: "127.0.0.1", Port: ports[1]},
 		tlsFiles:  tlsFiles,
 		options:   options,
 	}
@@ -152,11 +204,6 @@ func (broker *mqttBrokerFixture) restart(t *testing.T) {
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("restart Mosquitto container %s: %v\n%s", broker.container, err, output)
 	}
-	// Docker may allocate new host ports for an ephemeral publish mapping when
-	// a container is restarted. Always resolve the current endpoints before
-	// waiting or handing the fixture back to a protocol-specific test.
-	broker.plaintext.Port = publishedPort(t, broker.container, "1883/tcp")
-	broker.tls.Port = publishedPort(t, broker.container, "8883/tcp")
 	broker.waitUntilReady(t)
 }
 
@@ -214,28 +261,27 @@ func requireDocker(t *testing.T) {
 	}
 }
 
-func publishedPort(t *testing.T, container, target string) int {
+func freeTCPPorts(t *testing.T, count int) []int {
 	t.Helper()
-	output, err := exec.Command("docker", "port", container, target).Output()
-	if err != nil {
-		t.Fatalf("resolve published Mosquitto port %s: %v", target, err)
+	listeners := make([]net.Listener, 0, count)
+	ports := make([]int, 0, count)
+	for range count {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			for _, openListener := range listeners {
+				_ = openListener.Close()
+			}
+			t.Fatalf("allocate Mosquitto host port: %v", err)
+		}
+		listeners = append(listeners, listener)
+		ports = append(ports, listener.Addr().(*net.TCPAddr).Port)
 	}
-	for _, line := range strings.Split(string(output), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		_, port, splitErr := net.SplitHostPort(line)
-		if splitErr != nil {
-			continue
-		}
-		var value int
-		if _, scanErr := fmt.Sscanf(port, "%d", &value); scanErr == nil && value > 0 {
-			return value
+	for _, listener := range listeners {
+		if err := listener.Close(); err != nil {
+			t.Fatalf("release Mosquitto host port: %v", err)
 		}
 	}
-	t.Fatalf("Docker did not report a published port for %s: %q", target, output)
-	return 0
+	return ports
 }
 
 func dialEndpoint(endpoint mqttEndpoint) error {
@@ -260,7 +306,8 @@ func writeMosquittoConfig(t *testing.T, configDir string, requireClientCertifica
 	config := fmt.Sprintf(`persistence true
 persistence_location /mosquitto/data/
 autosave_interval 1
-per_listener_settings true
+# Mosquitto 2.0.12+ does not persist sessions with per_listener_settings.
+max_queued_messages 1000
 log_dest stdout
 
 listener %d 0.0.0.0
