@@ -96,6 +96,102 @@ log:
 	}
 }
 
+func TestLoadFromDirLoadsMQTTBaselineAndAPPOverrides(t *testing.T) {
+	dir := t.TempDir()
+	writeConfig(t, dir, "config.yaml", `
+database:
+  url: postgres://localhost:5432/base?sslmode=disable
+  username: user
+  password: password
+jwt:
+  secret: secret
+mqtt:
+  enabled: false
+  url: mqtts://broker.example:8883
+  username: yaml-user
+  password: yaml-password
+`)
+	t.Setenv("APP_ENV", "test")
+	t.Setenv("APP_MQTT__ENABLED", "true")
+	t.Setenv("APP_MQTT__PREFIX", "factory")
+	t.Setenv("APP_MQTT__KEEPALIVE", "45s")
+	t.Setenv("APP_MQTT__PASSWORD", "environment-password")
+
+	cfg, err := LoadFromDir(dir)
+	if err != nil {
+		t.Fatalf("LoadFromDir() error = %v", err)
+	}
+
+	if !cfg.MQTT.Enabled || cfg.MQTT.URL != "mqtts://broker.example:8883" {
+		t.Fatalf("MQTT enabled/URL = (%v, %q)", cfg.MQTT.Enabled, cfg.MQTT.URL)
+	}
+	if cfg.MQTT.Protocol != MQTTProtocol5 || cfg.MQTT.ClientID != "edge-platform-server" {
+		t.Errorf("MQTT protocol/client ID = (%q, %q), want default baseline", cfg.MQTT.Protocol, cfg.MQTT.ClientID)
+	}
+	if cfg.MQTT.Prefix != "factory" || cfg.MQTT.KeepAlive != 45*time.Second {
+		t.Errorf("MQTT APP_ overrides = (%q, %s)", cfg.MQTT.Prefix, cfg.MQTT.KeepAlive)
+	}
+	if cfg.MQTT.Username != "yaml-user" || cfg.MQTT.Password != "environment-password" {
+		t.Errorf("MQTT credentials precedence = (%q, %q)", cfg.MQTT.Username, cfg.MQTT.Password)
+	}
+	if cfg.MQTT.ConnectTimeout != 10*time.Second || cfg.MQTT.ReconnectMin != time.Second || cfg.MQTT.ReconnectMax != 30*time.Second {
+		t.Errorf("MQTT reconnect baseline = (%s, %s, %s)", cfg.MQTT.ConnectTimeout, cfg.MQTT.ReconnectMin, cfg.MQTT.ReconnectMax)
+	}
+	if cfg.MQTT.SessionExpiry != 24*time.Hour || cfg.MQTT.MaxPayloadBytes != 1<<20 || cfg.MQTT.ReliableQueueSize != 1024 || cfg.MQTT.RawQueueSize != 256 {
+		t.Errorf("MQTT delivery baseline = (%s, %d, %d, %d)", cfg.MQTT.SessionExpiry, cfg.MQTT.MaxPayloadBytes, cfg.MQTT.ReliableQueueSize, cfg.MQTT.RawQueueSize)
+	}
+	if cfg.MQTT.ConsumerTimeout != 5*time.Second || cfg.MQTT.ShutdownTimeout != 10*time.Second {
+		t.Errorf("MQTT timeout baseline = (%s, %s)", cfg.MQTT.ConsumerTimeout, cfg.MQTT.ShutdownTimeout)
+	}
+}
+
+func TestValidateMQTTSecurityConstraints(t *testing.T) {
+	base := func() Config {
+		return Config{
+			MQTT: MQTTConfig{
+				Enabled:           true,
+				URL:               "mqtts://broker.example:8883",
+				Protocol:          MQTTProtocol5,
+				ClientID:          "test-client",
+				Prefix:            "edge",
+				KeepAlive:         30 * time.Second,
+				ConnectTimeout:    10 * time.Second,
+				ReconnectMin:      time.Second,
+				ReconnectMax:      30 * time.Second,
+				SessionExpiry:     24 * time.Hour,
+				MaxPayloadBytes:   1 << 20,
+				ReliableQueueSize: 1024,
+				RawQueueSize:      256,
+				ConsumerTimeout:   5 * time.Second,
+				ShutdownTimeout:   10 * time.Second,
+				ClientCertFile:    "/etc/edge/client.crt",
+				ClientKeyFile:     "/etc/edge/client.key",
+			},
+		}
+	}
+
+	tests := []struct {
+		name    string
+		mutate  func(*MQTTConfig)
+		wantErr string
+	}{
+		{name: "userinfo", mutate: func(c *MQTTConfig) { c.URL = "mqtts://user:secret@broker.example:8883" }, wantErr: "must not contain userinfo"},
+		{name: "insecure verify", mutate: func(c *MQTTConfig) { c.InsecureSkipVerify = true }, wantErr: "insecure_skip_verify is not supported"},
+		{name: "certificate pair", mutate: func(c *MQTTConfig) { c.ClientKeyFile = "" }, wantErr: "client_key_file is required"},
+		{name: "relative CA path", mutate: func(c *MQTTConfig) { c.CAFile = "ca.pem" }, wantErr: "ca_file must be an absolute file path"},
+		{name: "mqtt TLS path", mutate: func(c *MQTTConfig) { c.URL = "mqtt://broker.example:1883" }, wantErr: "require an mqtts URL"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cfg := base()
+			test.mutate(&cfg.MQTT)
+			if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), test.wantErr) {
+				t.Fatalf("Validate() error = %v, want containing %q", err, test.wantErr)
+			}
+		})
+	}
+}
+
 func TestLoadFromDirRejectsInvalidTrustedProxyAndLoginGuard(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -23,3 +23,27 @@ file:
 log:
   level: info
   format: json
+
+# Broker credentials should be injected by the deployment secret manager.
+# Do not put credentials in the URL; mqtts performs certificate validation.
+mqtt:
+  enabled: false
+  url: mqtts://mqtt.example.internal:8883
+  protocol: mqtt5
+  client_id: edge-platform-server-prod
+  prefix: edge
+  username: change-me
+  password: change-me
+  ca_file: /etc/edge-platform/mqtt/ca.pem
+  client_cert_file: /etc/edge-platform/mqtt/client.crt
+  client_key_file: /etc/edge-platform/mqtt/client.key
+  keepalive: 30s
+  connect_timeout: 10s
+  reconnect_min: 1s
+  reconnect_max: 30s
+  session_expiry: 24h
+  max_payload_bytes: 1048576
+  reliable_queue_size: 1024
+  raw_queue_size: 256
+  consumer_timeout: 5s
+  shutdown_timeout: 10s

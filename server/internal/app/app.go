@@ -2,6 +2,8 @@
 package app
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -34,12 +36,14 @@ type Dependencies struct {
 	File         *filemgmt.Service
 	Log          *logmgmt.Service
 	Notification *notification.Service
+	MQTT         platformhttp.MQTTRuntime
 }
 
 // Application is the assembled HTTP application and its process logger.
 type Application struct {
 	Router *gin.Engine
 	Logger *slog.Logger
+	mqtt   platformhttp.MQTTRuntime
 }
 
 // New assembles the HTTP router. Database readiness is supplied by the caller
@@ -53,6 +57,7 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 	if err != nil {
 		return nil, err
 	}
+	mqttRuntime := newMQTTRuntime(cfg.MQTT, deps.MQTT)
 
 	router := gin.New()
 	if err := router.SetTrustedProxies(cfg.HTTP.TrustedProxies); err != nil {
@@ -73,7 +78,7 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 	router.NoRoute(platformhttp.NotFoundHandler)
 
 	platformhttp.RegisterSystemRoutes(router, platformhttp.SystemRoutes{
-		Readiness: readiness,
+		Readiness: combinedReadiness{database: readiness, mqtt: mqttRuntime, mqttEnabled: cfg.MQTT.Enabled},
 	})
 	authHandler, err := auth.NewHandler(deps.Auth, deps.Auth)
 	if err != nil {
@@ -93,6 +98,7 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 			Logger:        logger,
 		}),
 	)
+	platformhttp.RegisterMQTTStatusRoute(system, mqttRuntime)
 
 	rbacHandler, err := rbac.NewHandler(deps.RBAC)
 	if err != nil {
@@ -144,7 +150,46 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 		registerSwaggerUI(router)
 	}
 
-	return &Application{Router: router, Logger: logger}, nil
+	return &Application{Router: router, Logger: logger, mqtt: mqttRuntime}, nil
+}
+
+// StartRuntime starts process-local runtimes before the HTTP server accepts
+// traffic. A runtime is expected to manage broker reconnects asynchronously;
+// broker availability is therefore represented by readiness, not startup
+// failure.
+func (a *Application) StartRuntime(ctx context.Context) error {
+	if a == nil || a.mqtt == nil {
+		return nil
+	}
+	return a.mqtt.Start(ctx)
+}
+
+// StopRuntime stops MQTT before HTTP and database shutdown. The caller owns
+// the timeout because MQTT and HTTP have separate shutdown budgets.
+func (a *Application) StopRuntime(ctx context.Context) error {
+	if a == nil || a.mqtt == nil {
+		return nil
+	}
+	return a.mqtt.Stop(ctx)
+}
+
+type combinedReadiness struct {
+	database    platformhttp.ReadinessChecker
+	mqtt        platformhttp.MQTTRuntime
+	mqttEnabled bool
+}
+
+func (r combinedReadiness) Ready(ctx context.Context) error {
+	if r.database == nil {
+		return errors.New("database readiness checker is required")
+	}
+	if err := r.database.Ready(ctx); err != nil {
+		return err
+	}
+	if r.mqttEnabled && r.mqtt != nil {
+		return r.mqtt.Ready(ctx)
+	}
+	return nil
 }
 
 func (d Dependencies) validate() error {

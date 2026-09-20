@@ -16,6 +16,7 @@ import (
 	"github.com/EziosWJ/edge-platform/server/internal/dictionary"
 	"github.com/EziosWJ/edge-platform/server/internal/filemgmt"
 	"github.com/EziosWJ/edge-platform/server/internal/logmgmt"
+	platformhttp "github.com/EziosWJ/edge-platform/server/internal/platform/http"
 	"github.com/EziosWJ/edge-platform/server/internal/rbac"
 	"github.com/EziosWJ/edge-platform/server/internal/sysconfig"
 	"github.com/EziosWJ/edge-platform/server/internal/usermgmt"
@@ -28,6 +29,29 @@ type readyProbe struct {
 func (p readyProbe) Ready(context.Context) error {
 	return p.err
 }
+
+type mqttRuntimeProbe struct {
+	readyErr error
+	startErr error
+	stopErr  error
+	starts   int
+	stops    int
+	status   platformhttp.MQTTStatus
+}
+
+func (p *mqttRuntimeProbe) Start(context.Context) error {
+	p.starts++
+	return p.startErr
+}
+
+func (p *mqttRuntimeProbe) Stop(context.Context) error {
+	p.stops++
+	return p.stopErr
+}
+
+func (p *mqttRuntimeProbe) Ready(context.Context) error { return p.readyErr }
+
+func (p *mqttRuntimeProbe) Status() platformhttp.MQTTStatus { return p.status }
 
 func testConfig(environment string, swaggerEnabled bool) config.Config {
 	return config.Config{
@@ -114,6 +138,64 @@ func TestBuildRegistersSystemRoutes(t *testing.T) {
 		if response.Code != http.StatusOK {
 			t.Errorf("GET %s status = %d, want %d", path, response.Code, http.StatusOK)
 		}
+	}
+}
+
+func TestMQTTReadinessIsOptionalWhenDisabled(t *testing.T) {
+	runtime := &mqttRuntimeProbe{readyErr: context.Canceled}
+	cfg := testConfig("test", false)
+	cfg.MQTT.Protocol = config.MQTTProtocol5
+	runtime.status = platformhttp.MQTTStatus{Enabled: true, State: platformhttp.MQTTStateStopped}
+	deps := newFakeStores().deps()
+	deps.MQTT = runtime
+
+	router, err := Build(cfg, readyProbe{}, deps)
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	ready := httptest.NewRecorder()
+	router.ServeHTTP(ready, httptest.NewRequest(http.MethodGet, "/ready", nil))
+	if ready.Code != http.StatusOK {
+		t.Fatalf("disabled MQTT readiness status = %d, want %d", ready.Code, http.StatusOK)
+	}
+	status := httptest.NewRecorder()
+	router.ServeHTTP(status, httptest.NewRequest(http.MethodGet, "/api/system/mqtt/status", nil))
+	if status.Code != http.StatusUnauthorized {
+		t.Fatalf("MQTT status without login = %d, want %d", status.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestMQTTReadinessFailsWhenEnabledRuntimeIsNotReady(t *testing.T) {
+	runtime := &mqttRuntimeProbe{readyErr: context.Canceled}
+	cfg := testConfig("test", false)
+	cfg.MQTT.Enabled = true
+	cfg.MQTT.Protocol = config.MQTTProtocol5
+	deps := newFakeStores().deps()
+	deps.MQTT = runtime
+
+	application, err := New(cfg, readyProbe{}, deps)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	if err := application.StartRuntime(context.Background()); err != nil {
+		t.Fatalf("StartRuntime() error = %v", err)
+	}
+	if err := application.StopRuntime(context.Background()); err != nil {
+		t.Fatalf("StopRuntime() error = %v", err)
+	}
+	if runtime.starts != 1 || runtime.stops != 1 {
+		t.Fatalf("runtime lifecycle calls = (%d, %d), want (1, 1)", runtime.starts, runtime.stops)
+	}
+
+	ready := httptest.NewRecorder()
+	application.Router.ServeHTTP(ready, httptest.NewRequest(http.MethodGet, "/ready", nil))
+	if ready.Code != http.StatusServiceUnavailable {
+		t.Fatalf("enabled MQTT unready status = %d, want %d", ready.Code, http.StatusServiceUnavailable)
+	}
+	health := httptest.NewRecorder()
+	application.Router.ServeHTTP(health, httptest.NewRequest(http.MethodGet, "/health", nil))
+	if health.Code != http.StatusOK {
+		t.Fatalf("health status = %d, want %d", health.Code, http.StatusOK)
 	}
 }
 

@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 const (
@@ -32,6 +34,7 @@ type Config struct {
 	JWT         JWTConfig      `koanf:"jwt"`
 	Auth        AuthConfig     `koanf:"auth"`
 	Log         LogConfig      `koanf:"log"`
+	MQTT        MQTTConfig     `koanf:"mqtt"`
 }
 
 type ServiceConfig struct {
@@ -101,6 +104,38 @@ type LogConfig struct {
 	Level     string `koanf:"level"`
 	Format    string `koanf:"format"`
 	AddSource bool   `koanf:"add_source"`
+}
+
+const (
+	MQTTProtocol5   = "mqtt5"
+	MQTTProtocol311 = "mqtt311"
+)
+
+// MQTTConfig contains the process-local MQTT Runtime configuration. The
+// Runtime owns broker connections and MQTT message types; this package only
+// validates the static configuration needed to construct it.
+type MQTTConfig struct {
+	Enabled            bool          `koanf:"enabled"`
+	URL                string        `koanf:"url"`
+	Protocol           string        `koanf:"protocol"`
+	ClientID           string        `koanf:"client_id"`
+	Prefix             string        `koanf:"prefix"`
+	Username           string        `koanf:"username"`
+	Password           string        `koanf:"password"`
+	KeepAlive          time.Duration `koanf:"keepalive"`
+	ConnectTimeout     time.Duration `koanf:"connect_timeout"`
+	ReconnectMin       time.Duration `koanf:"reconnect_min"`
+	ReconnectMax       time.Duration `koanf:"reconnect_max"`
+	SessionExpiry      time.Duration `koanf:"session_expiry"`
+	MaxPayloadBytes    int64         `koanf:"max_payload_bytes"`
+	ReliableQueueSize  int           `koanf:"reliable_queue_size"`
+	RawQueueSize       int           `koanf:"raw_queue_size"`
+	ConsumerTimeout    time.Duration `koanf:"consumer_timeout"`
+	ShutdownTimeout    time.Duration `koanf:"shutdown_timeout"`
+	CAFile             string        `koanf:"ca_file"`
+	ClientCertFile     string        `koanf:"client_cert_file"`
+	ClientKeyFile      string        `koanf:"client_key_file"`
+	InsecureSkipVerify bool          `koanf:"insecure_skip_verify"`
 }
 
 // Validate rejects invalid startup configuration before infrastructure is
@@ -263,7 +298,146 @@ func (c Config) Validate() error {
 		errs = append(errs, errors.New("log.format must be one of json, text"))
 	}
 
+	errs = append(errs, validateMQTT(c.MQTT)...)
+
 	return errors.Join(errs...)
+}
+
+func validateMQTT(mqtt MQTTConfig) []error {
+	var errs []error
+
+	if !oneOf(mqtt.Protocol, MQTTProtocol5, MQTTProtocol311) {
+		errs = append(errs, errors.New("mqtt.protocol must be one of mqtt5 or mqtt311"))
+	}
+	if strings.TrimSpace(mqtt.Prefix) == "" {
+		errs = append(errs, errors.New("mqtt.prefix is required"))
+	}
+	if strings.TrimSpace(mqtt.Prefix) != mqtt.Prefix || strings.HasPrefix(mqtt.Prefix, "/") || strings.HasSuffix(mqtt.Prefix, "/") || strings.ContainsAny(mqtt.Prefix, "+#\x00") {
+		errs = append(errs, errors.New("mqtt.prefix must be a non-empty topic prefix without leading/trailing slash or wildcard"))
+	}
+	for _, segment := range strings.Split(mqtt.Prefix, "/") {
+		if segment == "" {
+			errs = append(errs, errors.New("mqtt.prefix must not contain empty topic segments"))
+			break
+		}
+	}
+	if mqtt.Enabled && (strings.TrimSpace(mqtt.ClientID) == "" || len(mqtt.ClientID) > 256 || !utf8.ValidString(mqtt.ClientID)) {
+		errs = append(errs, errors.New("mqtt.client_id must be valid UTF-8 and 1..256 bytes when MQTT is enabled"))
+	}
+	if mqtt.InsecureSkipVerify {
+		errs = append(errs, errors.New("mqtt.insecure_skip_verify is not supported"))
+	}
+
+	if strings.TrimSpace(mqtt.URL) == "" {
+		if mqtt.Enabled {
+			errs = append(errs, errors.New("mqtt.url is required when MQTT is enabled"))
+		}
+	} else if err := validateMQTTURL(mqtt.URL); err != nil {
+		errs = append(errs, err)
+	}
+
+	if (strings.TrimSpace(mqtt.Username) == "") != (strings.TrimSpace(mqtt.Password) == "") {
+		errs = append(errs, errors.New("mqtt.username and mqtt.password must be provided together"))
+	}
+	if mqtt.KeepAlive <= 0 {
+		errs = append(errs, errors.New("mqtt.keepalive must be greater than zero"))
+	}
+	if mqtt.ConnectTimeout <= 0 {
+		errs = append(errs, errors.New("mqtt.connect_timeout must be greater than zero"))
+	}
+	if mqtt.ReconnectMin <= 0 {
+		errs = append(errs, errors.New("mqtt.reconnect_min must be greater than zero"))
+	}
+	if mqtt.ReconnectMax < mqtt.ReconnectMin {
+		errs = append(errs, errors.New("mqtt.reconnect_max must not be less than reconnect_min"))
+	}
+	if mqtt.SessionExpiry <= 0 {
+		errs = append(errs, errors.New("mqtt.session_expiry must be greater than zero"))
+	}
+	if mqtt.MaxPayloadBytes <= 0 || mqtt.MaxPayloadBytes > 1<<20 {
+		errs = append(errs, errors.New("mqtt.max_payload_bytes must be between 1 and 1048576"))
+	}
+	if mqtt.ReliableQueueSize <= 0 {
+		errs = append(errs, errors.New("mqtt.reliable_queue_size must be greater than zero"))
+	}
+	if mqtt.RawQueueSize <= 0 {
+		errs = append(errs, errors.New("mqtt.raw_queue_size must be greater than zero"))
+	}
+	if mqtt.ConsumerTimeout <= 0 {
+		errs = append(errs, errors.New("mqtt.consumer_timeout must be greater than zero"))
+	}
+	if mqtt.ShutdownTimeout <= 0 {
+		errs = append(errs, errors.New("mqtt.shutdown_timeout must be greater than zero"))
+	}
+
+	if err := validateMQTTTLSPaths(mqtt); err != nil {
+		errs = append(errs, err...)
+	}
+
+	return errs
+}
+
+func validateMQTTURL(raw string) error {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return fmt.Errorf("mqtt.url is invalid: %w", err)
+	}
+	if !oneOf(strings.ToLower(u.Scheme), "mqtt", "mqtts") {
+		return errors.New("mqtt.url scheme must be mqtt or mqtts")
+	}
+	if u.Hostname() == "" {
+		return errors.New("mqtt.url must include a broker host")
+	}
+	if u.User != nil {
+		return errors.New("mqtt.url must not contain userinfo; use mqtt.username and mqtt.password")
+	}
+	if u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
+		return errors.New("mqtt.url must contain only scheme and broker host")
+	}
+	return nil
+}
+
+func validateMQTTTLSPaths(mqtt MQTTConfig) []error {
+	var errs []error
+	paths := []struct {
+		name  string
+		value string
+	}{
+		{name: "mqtt.ca_file", value: mqtt.CAFile},
+		{name: "mqtt.client_cert_file", value: mqtt.ClientCertFile},
+		{name: "mqtt.client_key_file", value: mqtt.ClientKeyFile},
+	}
+
+	for _, path := range paths {
+		if strings.TrimSpace(path.value) == "" {
+			continue
+		}
+		if strings.IndexByte(path.value, 0) >= 0 {
+			errs = append(errs, fmt.Errorf("%s must not contain NUL", path.name))
+			continue
+		}
+		if !filepath.IsAbs(path.value) {
+			errs = append(errs, fmt.Errorf("%s must be an absolute file path", path.name))
+		}
+	}
+
+	if strings.TrimSpace(mqtt.ClientCertFile) != "" && strings.TrimSpace(mqtt.ClientKeyFile) == "" {
+		errs = append(errs, errors.New("mqtt.client_key_file is required when mqtt.client_cert_file is set"))
+	}
+	if strings.TrimSpace(mqtt.ClientKeyFile) != "" && strings.TrimSpace(mqtt.ClientCertFile) == "" {
+		errs = append(errs, errors.New("mqtt.client_cert_file is required when mqtt.client_key_file is set"))
+	}
+
+	if strings.TrimSpace(mqtt.URL) != "" {
+		u, err := url.Parse(strings.TrimSpace(mqtt.URL))
+		if err == nil && strings.EqualFold(u.Scheme, "mqtt") {
+			if mqtt.CAFile != "" || mqtt.ClientCertFile != "" || mqtt.ClientKeyFile != "" {
+				errs = append(errs, errors.New("mqtt TLS certificate paths require an mqtts URL"))
+			}
+		}
+	}
+
+	return errs
 }
 
 func validateAddress(address string) error {

@@ -22,3 +22,21 @@ file:
 log:
   level: debug
   format: text
+
+# Enable after the MQTT Runtime and a local broker are available.
+mqtt:
+  enabled: false
+  url: mqtt://127.0.0.1:1883
+  protocol: mqtt5
+  client_id: edge-platform-server-dev
+  prefix: edge
+  keepalive: 30s
+  connect_timeout: 10s
+  reconnect_min: 1s
+  reconnect_max: 30s
+  session_expiry: 24h
+  max_payload_bytes: 1048576
+  reliable_queue_size: 1024
+  raw_queue_size: 256
+  consumer_timeout: 5s
+  shutdown_timeout: 10s

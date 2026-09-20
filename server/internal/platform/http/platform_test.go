@@ -18,6 +18,15 @@ type readinessFunc func(context.Context) error
 
 func (f readinessFunc) Ready(ctx context.Context) error { return f(ctx) }
 
+type mqttRuntimeStatusStub struct {
+	status MQTTStatus
+}
+
+func (s mqttRuntimeStatusStub) Start(context.Context) error { return nil }
+func (s mqttRuntimeStatusStub) Stop(context.Context) error  { return nil }
+func (s mqttRuntimeStatusStub) Ready(context.Context) error { return nil }
+func (s mqttRuntimeStatusStub) Status() MQTTStatus          { return s.status }
+
 func TestAPIResponseEnvelope(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -241,6 +250,35 @@ func TestSystemRoutesReadinessAndMetrics(t *testing.T) {
 		t.Fatalf("unready status = %d", unready.Code)
 	}
 	assertEnvelope(t, unready, stdhttp.StatusServiceUnavailable, "service unavailable")
+}
+
+func TestMQTTStatusRouteReturnsRedactedStableProjection(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	RegisterMQTTStatusRoute(router, mqttRuntimeStatusStub{status: MQTTStatus{
+		Enabled:         true,
+		State:           MQTTStateReady,
+		ProtocolVersion: "mqtt5",
+		LastErrorCode:   "CONNECT_FAILED",
+		RetryCount:      2,
+		Subscriptions:   MQTTSubscriptionStatus{EdgeStatus: true, DeviceStatus: true, Raw: true, Event: true},
+	}})
+
+	response := serve(router, stdhttp.MethodGet, "/mqtt/status")
+	if response.Code != stdhttp.StatusOK {
+		t.Fatalf("MQTT status = %d body=%s, want %d", response.Code, response.Body.String(), stdhttp.StatusOK)
+	}
+	assertEnvelope(t, response, CodeSuccess, "success")
+	for _, field := range []string{"\"state\":\"READY\"", "\"protocolVersion\":\"mqtt5\"", "\"retryCount\":2", "\"subscriptions\""} {
+		if !strings.Contains(response.Body.String(), field) {
+			t.Errorf("MQTT status body = %s, missing %s", response.Body.String(), field)
+		}
+	}
+	for _, secret := range []string{"broker.example", "password", "certificate", "rawPayload"} {
+		if strings.Contains(response.Body.String(), secret) {
+			t.Errorf("MQTT status body leaked %q: %s", secret, response.Body.String())
+		}
+	}
 }
 
 func TestRequestLoggerIncludesRequestMetadata(t *testing.T) {
