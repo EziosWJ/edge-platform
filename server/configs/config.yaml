@@ -49,3 +49,21 @@ log:
   level: info
   format: json
   add_source: false
+
+# MQTT is intentionally disabled until a broker and the MQTT Runtime are
+# configured. APP_MQTT__* environment variables override these values.
+mqtt:
+  enabled: false
+  protocol: mqtt5
+  client_id: edge-platform-server
+  prefix: edge
+  keepalive: 30s
+  connect_timeout: 10s
+  reconnect_min: 1s
+  reconnect_max: 30s
+  session_expiry: 24h
+  max_payload_bytes: 1048576
+  reliable_queue_size: 1024
+  raw_queue_size: 256
+  consumer_timeout: 5s
+  shutdown_timeout: 10s

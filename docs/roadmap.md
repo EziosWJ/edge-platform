@@ -34,7 +34,7 @@ Out of Scope：
 - HMI
 
 Acceptance：
-- Cloud 能稳定收到 Edge status/raw/event
+- Cloud 能稳定收到四类 MQTT v1 上行消息：Edge status、Device status、raw、event
 - Broker 重启后自动恢复连接和订阅
 - MQTT runtime 状态可诊断
 - CI 全绿

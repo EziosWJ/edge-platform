@@ -69,6 +69,12 @@ tasks:
     cmds:
       - go test -tags=integration ./integration -run 'Postgres|Auth|RBAC|SysConfig|Department|Dictionary|Login|File|Notification|UserPage' -count=1
 
+  backend:mqtt-integration:
+    desc: Run Mosquitto MQTT integration tests
+    dir: server
+    cmds:
+      - go test -tags=integration ./integration -run '^(TestMosquittoFixture|TestMQTTRuntime)' -count=1 -timeout=10m
+
   frontend:lint:
     desc: Run web lint
     dir: web

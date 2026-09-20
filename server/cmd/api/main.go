@@ -118,6 +118,10 @@ func main() {
 		slog.Error("build application", "error", err)
 		os.Exit(1)
 	}
+	if err := application.StartRuntime(context.Background()); err != nil {
+		application.Logger.Error("start runtime", "error", err)
+		os.Exit(1)
+	}
 
 	server := &http.Server{
 		Addr:              cfg.HTTP.Address,
@@ -139,6 +143,12 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
+
+	mqttShutdownContext, cancelMQTT := context.WithTimeout(context.Background(), cfg.MQTT.ShutdownTimeout)
+	if err := application.StopRuntime(mqttShutdownContext); err != nil {
+		application.Logger.Error("MQTT runtime shutdown failed", "error", err)
+	}
+	cancelMQTT()
 
 	shutdownContext, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 	defer cancel()
