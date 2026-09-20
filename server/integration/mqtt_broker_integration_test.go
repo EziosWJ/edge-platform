@@ -103,6 +103,12 @@ func startMQTTBroker(t *testing.T, options mqttBrokerOptions) *mqttBrokerFixture
 	requireDocker(t)
 
 	fixtureDir := t.TempDir()
+	// t.TempDir creates a private 0700 directory. Mosquitto runs as a
+	// non-root user in the official image, so the container must be able to
+	// traverse the temporary directory to reach its mounted configuration.
+	if err := os.Chmod(fixtureDir, 0o755); err != nil {
+		t.Fatalf("make Mosquitto fixture directory traversable: %v", err)
+	}
 	configDir := filepath.Join(fixtureDir, "config")
 	if err := os.MkdirAll(configDir, 0o755); err != nil {
 		t.Fatalf("create Mosquitto config directory: %v", err)
