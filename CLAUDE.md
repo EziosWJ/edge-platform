@@ -42,3 +42,17 @@ Cloud 正式生产数据库为 PostgreSQL。SQLite 仅保留本地/测试兼容�
 - 不恢复脚手架 Demo 或伪造 Dashboard 数据。
 
 具体边界见 `docs/adr/0001-cloud-platform-scope-and-edge-cloud-boundary.md`。
+
+## Agent skills
+
+### Issue tracker
+
+Issues 以 GitHub Issues 形式存放在 `EziosWJ/edge-platform`，统一用 `gh` CLI 操作。见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+沿用五个 canonical triage 角色，标签名与角色同名。见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+单上下文（single-context）：根目录 `CONTEXT.md` + `docs/adr/`。见 `docs/agents/domain.md`。
