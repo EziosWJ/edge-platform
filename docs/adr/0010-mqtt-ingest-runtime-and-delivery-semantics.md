@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-20
+- Updated: 2026-09-20（集成测试基座改为遵循仓库既有 docker CLI 约定，见下方 Acceptance）
 
 ## Context
 
@@ -70,7 +71,7 @@ M1 要求 Edge Platform Server 稳定连接 MQTT Broker，并解析 Edge Collect
 ## Acceptance
 
 - 单元测试覆盖配置验证、Topic/envelope 解析、身份不一致、payload 上限、状态机、ACK outcome、队列过载、指标标签和优雅关闭。
-- 使用 Testcontainers for Go 和固定版本 Eclipse Mosquitto 做真实 Broker 集成测试。MQTT 5 覆盖明文、TLS、mTLS；MQTT 3.1.1 覆盖明文和 TLS；两种协议都覆盖 Broker 重启、重新订阅和持久 session。
+- 使用固定版本 Eclipse Mosquitto 做真实 Broker 集成测试；测试基座遵循仓库既有集成测试约定，直接调用 `docker` CLI 并在 Docker 不可用时跳过，不引入容器编排依赖。MQTT 5 覆盖明文、TLS、mTLS；MQTT 3.1.1 覆盖明文和 TLS；两种协议都覆盖 Broker 重启、重新订阅和持久 session。
 - 错误 CA、hostname 不匹配、客户端证书/私钥不配对必须失败；测试和生产均不允许跳过证书校验。
 - Broker 恢复可连接后，Cloud 最迟 45 秒恢复为 `READY` 并重新收到四类测试消息。Cloud 短暂断线期间的 QoS 1 event 应通过持久 session 重投；raw QoS 0 不承诺断线期间不丢失。
 - 新增独立 Taskfile 入口 `backend:mqtt-integration` 并由 CI 明确执行；默认 `task check` 不强制本地 Docker。普通 MQTT 单元测试继续属于 `go test ./...` 和 `task backend:check`。
