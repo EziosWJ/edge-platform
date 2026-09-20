@@ -41,9 +41,12 @@ const (
 // Config is independent from the application config package so the MQTT
 // module can be adopted before the app wiring is ready.
 type Config struct {
-	Enabled           bool
-	BrokerURL         string
-	Protocol          Protocol
+	Enabled   bool
+	BrokerURL string
+	Protocol  Protocol
+	// ClientID identifies the persistent subscription session. It must change
+	// whenever BrokerURL, Protocol, or TopicPrefix changes so an old session
+	// cannot continue receiving the previous subscription set.
 	ClientID          string
 	TopicPrefix       string
 	Username          string
@@ -174,6 +177,7 @@ type Status struct {
 	ConnectedAt     time.Time
 	DisconnectedAt  time.Time
 	LastMessageAt   time.Time
+	RecentErrorAt   time.Time
 	RecentErrorCode string
 	RetryCount      int
 	NextRetryAt     time.Time

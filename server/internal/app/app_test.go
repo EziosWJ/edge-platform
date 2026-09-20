@@ -141,6 +141,29 @@ func TestBuildRegistersSystemRoutes(t *testing.T) {
 	}
 }
 
+func TestNewMQTTRuntimeBuildsDisabledProductionAdapter(t *testing.T) {
+	runtime, err := newMQTTRuntime(config.MQTTConfig{}, nil)
+	if err != nil {
+		t.Fatalf("newMQTTRuntime() error = %v", err)
+	}
+	status := runtime.Status()
+	if status.Enabled || status.State != platformhttp.MQTTStateDisabled || status.ProtocolVersion != config.MQTTProtocol5 {
+		t.Fatalf("disabled MQTT status = %+v", status)
+	}
+	if err := runtime.Start(context.Background()); err != nil {
+		t.Fatalf("start disabled MQTT runtime: %v", err)
+	}
+	if err := runtime.Ready(context.Background()); err != nil {
+		t.Fatalf("disabled MQTT readiness error = %v", err)
+	}
+	if err := runtime.Stop(context.Background()); err != nil {
+		t.Fatalf("stop disabled MQTT runtime: %v", err)
+	}
+	if got := runtime.Status().State; got != platformhttp.MQTTStateDisabled {
+		t.Fatalf("disabled MQTT state after stop = %q", got)
+	}
+}
+
 func TestMQTTReadinessIsOptionalWhenDisabled(t *testing.T) {
 	runtime := &mqttRuntimeProbe{readyErr: context.Canceled}
 	cfg := testConfig("test", false)

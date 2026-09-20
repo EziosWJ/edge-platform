@@ -57,7 +57,10 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 	if err != nil {
 		return nil, err
 	}
-	mqttRuntime := newMQTTRuntime(cfg.MQTT, deps.MQTT)
+	mqttRuntime, err := newMQTTRuntime(cfg.MQTT, deps.MQTT)
+	if err != nil {
+		return nil, err
+	}
 
 	router := gin.New()
 	if err := router.SetTrustedProxies(cfg.HTTP.TrustedProxies); err != nil {

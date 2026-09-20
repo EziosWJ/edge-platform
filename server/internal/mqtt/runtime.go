@@ -378,7 +378,7 @@ func (r *Runtime) shutdownClient() {
 
 func (r *Runtime) Stop(ctx context.Context) error {
 	if !r.cfg.Enabled {
-		r.setState(StateStopped, "")
+		r.setState(StateDisabled, "")
 		return nil
 	}
 	if !r.started.Load() {
@@ -450,6 +450,7 @@ func (r *Runtime) recordError(code string, err error, retry int) {
 	r.setState(StateReconnecting, code)
 	r.mu.Lock()
 	r.status.RetryCount = retry
+	r.status.RecentErrorAt = time.Now()
 	r.mu.Unlock()
 	r.logger.Warn("mqtt runtime error", "code", code, "error", sanitizeError(err))
 }

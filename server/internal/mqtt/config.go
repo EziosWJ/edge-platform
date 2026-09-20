@@ -103,6 +103,12 @@ func (c Config) Validate() error {
 	if (c.TLS.ClientCertFile == "") != (c.TLS.ClientKeyFile == "") {
 		return fmt.Errorf("%w: client certificate and key must be configured together", ErrInvalidConfig)
 	}
+	if (c.Username == "") != (c.Password == "") {
+		return fmt.Errorf("%w: username and password must be configured together", ErrInvalidConfig)
+	}
+	if _, err := c.TLSConfig(); err != nil {
+		return fmt.Errorf("%w: validate TLS material: %v", ErrInvalidConfig, err)
+	}
 	return nil
 }
 
