@@ -50,6 +50,13 @@ try {
     });
     await page.getByText("edge-offline", { exact: true }).waitFor();
 
+    const deviceLink = page.getByRole("link", {
+      name: "查看 edge-offline 下的设备",
+    });
+    if ((await deviceLink.getAttribute("href")) !== "/device?edgeId=edge-offline") {
+      throw new Error("Edge to Device navigation link was not scoped to the Edge");
+    }
+
     await page.getByLabel("Edge ID").fill("edge-offline");
     await page.getByLabel("筛选状态").selectOption("OFFLINE");
     await page.getByRole("button", { name: "查询" }).click();

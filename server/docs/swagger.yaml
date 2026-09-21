@@ -226,6 +226,14 @@ definitions:
       message:
         type: string
     type: object
+  device.ApiEnvelope:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
   filemgmt.ApiEnvelope:
     properties:
       code:
@@ -615,6 +623,77 @@ paths:
       summary: Edge 分页查询
       tags:
       - Edge
+  /api/device/page:
+    get:
+      parameters:
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，1-500，默认 10
+        in: query
+        name: pageSize
+        type: integer
+      - description: 所属 Edge ID，精确匹配
+        in: query
+        name: edgeId
+        type: string
+      - description: Cloud Device ID，精确匹配
+        in: query
+        name: deviceId
+        type: string
+      - description: 来源 Device ID，精确匹配
+        in: query
+        name: sourceDeviceId
+        type: string
+      - description: Device 状态：INITIAL、ONLINE、DEGRADED 或 OFFLINE
+        in: query
+        name: status
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/device.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/device.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/device.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Device 分页查询
+      tags:
+      - Device
+  /api/device/{deviceId}:
+    get:
+      parameters:
+      - description: Cloud Device ID
+        in: path
+        name: deviceId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/device.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/device.ApiEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/device.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Device 详情
+      tags:
+      - Device
   /api/system/config:
     post:
       parameters:

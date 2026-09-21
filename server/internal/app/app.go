@@ -171,6 +171,16 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 		edge.RegisterRoutes(edges, edgeHandler)
 	}
 
+	if deps.Device != nil {
+		deviceHandler, err := device.NewHandler(deps.Device)
+		if err != nil {
+			return nil, fmt.Errorf("create Device handler: %w", err)
+		}
+		devices := router.Group("/api/device")
+		devices.Use(auth.BearerMiddleware(deps.Auth))
+		device.RegisterRoutes(devices, deviceHandler)
+	}
+
 	if cfg.Environment == config.EnvironmentDev && cfg.Swagger.Enabled {
 		registerSwaggerUI(router)
 	}

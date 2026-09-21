@@ -136,15 +136,24 @@ export function EdgePage() {
         align: "center",
         nowrap: true,
         render: (_, record) => (
-          <Button
-            size="sm"
-            variant="ghost"
-            aria-label={`查看 ${record.edgeId} 详情`}
-            onClick={() => openDetail(record)}
-          >
-            <Eye className="h-4 w-4" aria-hidden />
-            详情
-          </Button>
+          <div className="flex items-center justify-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={`查看 ${record.edgeId} 详情`}
+              onClick={() => openDetail(record)}
+            >
+              <Eye className="h-4 w-4" aria-hidden />
+              详情
+            </Button>
+            <a
+              className="inline-flex h-control-sm items-center rounded-control px-space-3 text-body-secondary font-medium text-text-secondary hover:bg-neutral-background hover:text-text-primary"
+              href={`/device?edgeId=${encodeURIComponent(record.edgeId)}`}
+              aria-label={`查看 ${record.edgeId} 下的设备`}
+            >
+              设备
+            </a>
+          </div>
         ),
       },
     ],
@@ -229,7 +238,7 @@ export function EdgePage() {
               />
             ) : undefined
           }
-          minWidth={1040}
+          minWidth={1120}
           onRowClick={openDetail}
           empty={
             <EmptyState

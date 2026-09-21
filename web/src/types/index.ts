@@ -10,6 +10,11 @@ export type {
 } from "./api";
 export type { EdgePageQuery, EdgeRecord, EdgeStatus } from "./edge";
 export type {
+  DeviceCommunicationStatus,
+  DevicePageQuery,
+  DeviceRecord,
+} from "./device";
+export type {
   DeptBatchDeleteRequest,
   DeptCreateRequest,
   DeptListQuery,

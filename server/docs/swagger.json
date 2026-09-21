@@ -241,6 +241,41 @@
                 }
             }
         },
+        "/api/device/page": {
+            "get": {
+                "security": [{"BearerAuth": []}],
+                "tags": ["Device"],
+                "summary": "Device 分页查询",
+                "parameters": [
+                    {"type": "integer", "description": "页码，默认 1", "name": "page", "in": "query"},
+                    {"type": "integer", "description": "每页条数，1-500，默认 10", "name": "pageSize", "in": "query"},
+                    {"type": "string", "description": "所属 Edge ID，精确匹配", "name": "edgeId", "in": "query"},
+                    {"type": "string", "description": "Cloud Device ID，精确匹配", "name": "deviceId", "in": "query"},
+                    {"type": "string", "description": "来源 Device ID，精确匹配", "name": "sourceDeviceId", "in": "query"},
+                    {"type": "string", "description": "Device 状态：INITIAL、ONLINE、DEGRADED 或 OFFLINE", "name": "status", "in": "query"}
+                ],
+                "responses": {
+                    "200": {"description": "OK", "schema": {"$ref": "#/definitions/device.ApiEnvelope"}},
+                    "400": {"description": "Bad Request", "schema": {"$ref": "#/definitions/device.ApiEnvelope"}},
+                    "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/device.ApiEnvelope"}}
+                }
+            }
+        },
+        "/api/device/{deviceId}": {
+            "get": {
+                "security": [{"BearerAuth": []}],
+                "tags": ["Device"],
+                "summary": "Device 详情",
+                "parameters": [
+                    {"type": "string", "description": "Cloud Device ID", "name": "deviceId", "in": "path", "required": true}
+                ],
+                "responses": {
+                    "200": {"description": "OK", "schema": {"$ref": "#/definitions/device.ApiEnvelope"}},
+                    "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/device.ApiEnvelope"}},
+                    "404": {"description": "Not Found", "schema": {"$ref": "#/definitions/device.ApiEnvelope"}}
+                }
+            }
+        },
         "/api/system/config": {
             "post": {
                 "security": [
@@ -4143,6 +4178,14 @@
                 "message": {
                     "type": "string"
                 }
+            }
+        },
+        "device.ApiEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {"type": "integer"},
+                "data": {},
+                "message": {"type": "string"}
             }
         },
         "filemgmt.ApiEnvelope": {

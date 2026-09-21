@@ -10,7 +10,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "test:layout": "node tests/operation-column-layout.mjs",
     "test:route-loading": "node tests/route-loading.mjs",
-    "test:edge-management": "node tests/edge-management.mjs"
+    "test:edge-management": "node tests/edge-management.mjs",
+    "test:device-management": "node tests/device-management.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",
