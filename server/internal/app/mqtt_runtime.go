@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/EziosWJ/edge-platform/server/internal/config"
+	"github.com/EziosWJ/edge-platform/server/internal/device"
 	"github.com/EziosWJ/edge-platform/server/internal/edge"
 	"github.com/EziosWJ/edge-platform/server/internal/mqtt"
 	platformhttp "github.com/EziosWJ/edge-platform/server/internal/platform/http"
@@ -20,15 +21,22 @@ var errMQTTNotReady = errors.New("mqtt runtime is not ready")
 // production MQTT runtime. MQTT remains an in-process component; this adapter
 // is the only place where the internal ingest types meet the HTTP seam.
 func newMQTTRuntime(cfg config.MQTTConfig, runtime platformhttp.MQTTRuntime, edgeServices ...*edge.Service) (platformhttp.MQTTRuntime, error) {
-	if runtime != nil {
-		return runtime, nil
-	}
 	var edgeService *edge.Service
 	if len(edgeServices) > 0 {
 		edgeService = edgeServices[0]
 	}
+	return newMQTTRuntimeWithServices(cfg, runtime, edgeService, nil)
+}
 
-	consumer := newEdgeStatusConsumer(edgeService)
+func newMQTTRuntimeWithServices(cfg config.MQTTConfig, runtime platformhttp.MQTTRuntime, edgeService *edge.Service, deviceService *device.Service) (platformhttp.MQTTRuntime, error) {
+	if runtime != nil {
+		return runtime, nil
+	}
+
+	consumer := ingressConsumer{
+		edge:   newEdgeStatusConsumer(edgeService),
+		device: newDeviceStatusConsumer(deviceService),
+	}
 	internalConfig := mqtt.Config{
 		Enabled:           cfg.Enabled,
 		BrokerURL:         cfg.URL,

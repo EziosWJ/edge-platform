@@ -13,6 +13,7 @@ import (
 	"github.com/EziosWJ/edge-platform/server/internal/auth"
 	"github.com/EziosWJ/edge-platform/server/internal/config"
 	"github.com/EziosWJ/edge-platform/server/internal/dept"
+	"github.com/EziosWJ/edge-platform/server/internal/device"
 	"github.com/EziosWJ/edge-platform/server/internal/dictionary"
 	"github.com/EziosWJ/edge-platform/server/internal/edge"
 	"github.com/EziosWJ/edge-platform/server/internal/filemgmt"
@@ -38,6 +39,7 @@ type Dependencies struct {
 	Log          *logmgmt.Service
 	Notification *notification.Service
 	Edge         *edge.Service
+	Device       *device.Service
 	MQTT         platformhttp.MQTTRuntime
 }
 
@@ -59,7 +61,7 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 	if err != nil {
 		return nil, err
 	}
-	mqttRuntime, err := newMQTTRuntime(cfg.MQTT, deps.MQTT, deps.Edge)
+	mqttRuntime, err := newMQTTRuntimeWithServices(cfg.MQTT, deps.MQTT, deps.Edge, deps.Device)
 	if err != nil {
 		return nil, err
 	}
