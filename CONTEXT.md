@@ -95,6 +95,27 @@ server/internal/
 
 **Edge**：运行 Edge Collector 的边缘节点。Cloud 通过 MQTT 标识和维护其连接/状态。
 
+**Edge Registration**：Cloud 第一次收到领域有效的 EdgeStatus 时认识并登记一个 Edge。Registration 不等同于人工预配置，也不会因为 DeviceStatus、raw 或 DeviceEvent 自动创建 Edge。
+_Avoid_：provisioning、Device registration
+
+**RegisteredAt**：Edge 第一次完成 Registration 时的 Cloud 接收时间。它在 Edge 的生命周期内保持不变。
+_Avoid_：provisionedAt、createdAt（当它被用来表示 Collector 时间时）
+
+**EdgeStatus**：Edge 对自身 MQTT 会话状态的上行断言。它只表达 Edge 的 online/offline，不表达其下属 Device 的采集状态。
+_Avoid_：Device status、MQTT Runtime status
+
+**Domain-valid EdgeStatus**：Topic/envelope identity 合法且 `data.online` 存在并为 boolean 的 EdgeStatus。`reason` 可以缺省或扩展，不改变 online/offline 的含义。
+_Avoid_：raw status、collector internal status
+
+**Edge Online / Edge Offline**：Cloud 按收到顺序对最近一个领域有效 EdgeStatus 的 `data.online` 值进行投影。Cloud 不因 SourceTimestamp、沉默、`lastSeenAt` 超时、自己的 MQTT 连接状态或其他消息类型推断状态。
+_Avoid_：reachable、healthy、Device online
+
+**LastSeenAt**：Cloud 最近收到并接受 EdgeStatus 的时间，使用 Cloud 的 ReceivedAt；retained、LWT 和重复投递也会更新它。它不是 SourceTimestamp，也不是实际的 offline 时间。
+_Avoid_：offlineAt、lastOnlineAt
+
+**Discovered Edge**：通过 EdgeStatus 自动登记且持续保留的 Edge。M2 不为 Edge 引入删除、归档或禁用状态；offline 只表示最近的 EdgeStatus 断言，不表示记录失效。
+_Avoid_：provisioned Edge、temporary Edge
+
 **Device**：由某个 Edge 管理的现场设备。Cloud 不直接理解 Modbus 地址、串口参数、Unit ID 等 Edge 内部采集细节。
 
 **DataPoint**：Cloud 对设备数据的语义化数据点，例如 `current_a`、`temperature`、`breaker_status`。HMI、历史、告警等上层能力绑定 DataPoint，而不是直接绑定 MQTT Topic 或原始寄存器地址。
