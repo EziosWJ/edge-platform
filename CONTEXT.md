@@ -152,9 +152,17 @@ _Avoid_：Device LastSeenAt、SourceTimestamp
 **Communication Error**：DeviceStatus 携带的当前 Collector 诊断文本；它解释最近通信状态，但不是稳定错误码或历史事件。
 _Avoid_：DeviceEvent、Alarm、error code
 
-**DataPoint**：Cloud 对设备数据的语义化数据点，例如 `current_a`、`temperature`、`breaker_status`。HMI、历史、告警等上层能力绑定 DataPoint，而不是直接绑定 MQTT Topic 或原始寄存器地址。
+**DataPoint**：Cloud 手工定义的设备语义数据点。Cloud 为其分配稳定的全局 UUID `dataPointId`，并以 `(deviceId, pointKey)` 作为稳定业务唯一键；例如 `current_a`、`temperature`、`breaker_status`。pointKey 与 valueType 创建后不可修改。HMI、历史、告警等上层能力绑定 DataPoint，而不是直接绑定 MQTT Topic 或原始寄存器地址。
+_Avoid_：MQTT topic、register address 作为上层数据点身份
 
-**CurrentValue**：某个 DataPoint 的当前值及其时间、质量等状态。
+**SourceMapping**：DataPoint 到 Edge raw register 的 Cloud 内部映射配置边界。M4 允许该边界理解 functionCode、address、encoding、word/byte order、bitIndex、scale/offset，但这些字段不得扩散到 CurrentValue、WebSocket、History 或 HMI 业务模型。
+_Avoid_：把 Modbus mapping 当成 DataPoint identity
+
+**CurrentValue**：某个 DataPoint 的当前语义投影，与 DataPoint configuration 独立持久化。它包含 typed value、`NO_DATA|GOOD|BAD` quality、来源值时间 `sourceTimestamp`、Cloud observation 时间 `observedAt` 与单调递增 `revision`。BAD 保留最近 GOOD value/sourceTimestamp；Device/Edge 状态不会自动覆盖 point quality。
+_Avoid_：history record、Device status、SourceMapping
+
+**Point Quality**：M4 CurrentValue 的可信度事实。`NO_DATA` 表示配置尚未由新 raw 形成可判定值，`GOOD` 表示本次 raw 可完整解码，`BAD` 表示已收到领域有效 raw 但该 mapping 当前无法形成新有效值。M4 不引入 UNCERTAIN。
+_Avoid_：把 Device OFFLINE 直接解释为 BAD
 
 **Command**：Cloud 发起的设备控制意图。Cloud 经 MQTT 下发，Edge Collector 在既有安全边界内执行并通过 command-result 返回状态。
 
