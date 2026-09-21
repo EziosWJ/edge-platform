@@ -84,6 +84,15 @@ tasks:
     cmds:
       - node scripts/m2-edge-acceptance.mjs
 
+  m3:device-acceptance:
+    desc: Run the real PostgreSQL, Mosquitto, Cloud, two Edge Collectors, and Modbus Device M3 acceptance
+    dir: '{{.ROOT_DIR}}'
+    preconditions:
+      - sh: test -f scripts/m3-device-acceptance.mjs
+        msg: scripts/m3-device-acceptance.mjs is not present; GitHub #24 has not been implemented yet
+    cmds:
+      - node scripts/m3-device-acceptance.mjs
+
   frontend:lint:
     desc: Run web lint
     dir: web
