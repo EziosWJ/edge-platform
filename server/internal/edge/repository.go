@@ -36,6 +36,40 @@ RETURNING edge_id, status, registered_at, last_seen_at`,
 	return normalizeEdge(result), nil
 }
 
+// ObserveRegistration first attempts a conflict-free insert so the caller
+// can distinguish true first registration from an ordinary status update. A
+// conflict falls back to the existing atomic Observe statement, preserving
+// M2 ordering semantics for the current projection.
+func (r *Repository) ObserveRegistration(ctx context.Context, observation Observation) (ObservationResult, error) {
+	rows, err := r.db.WithContext(ctx).Raw(`
+INSERT INTO edge (edge_id, status, registered_at, last_seen_at)
+VALUES (?, ?, ?, ?)
+ON CONFLICT (edge_id) DO NOTHING
+RETURNING edge_id`, observation.EdgeID, observation.Status, observation.ReceivedAt, observation.ReceivedAt).Rows()
+	if err != nil {
+		return ObservationResult{}, err
+	}
+	defer rows.Close()
+	if rows.Next() {
+		var edgeID string
+		if err := rows.Scan(&edgeID); err != nil {
+			return ObservationResult{}, err
+		}
+		return ObservationResult{
+			Edge:    Edge{EdgeID: edgeID, Status: observation.Status, RegisteredAt: observation.ReceivedAt, LastSeenAt: observation.ReceivedAt},
+			Created: true,
+		}, nil
+	}
+	if err := rows.Err(); err != nil {
+		return ObservationResult{}, err
+	}
+	updated, err := r.Observe(ctx, observation)
+	if err != nil {
+		return ObservationResult{}, err
+	}
+	return ObservationResult{Edge: updated}, nil
+}
+
 func (r *Repository) Page(ctx context.Context, query PageQuery) (Page, error) {
 	var result Page
 	db := r.db.WithContext(ctx).Model(&Edge{})

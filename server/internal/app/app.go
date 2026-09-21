@@ -48,6 +48,7 @@ type Application struct {
 	Router *gin.Engine
 	Logger *slog.Logger
 	mqtt   platformhttp.MQTTRuntime
+	replay *deviceStatusReplayCoordinator
 }
 
 // New assembles the HTTP router. Database readiness is supplied by the caller
@@ -64,6 +65,13 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 	mqttRuntime, err := newMQTTRuntimeWithServices(cfg.MQTT, deps.MQTT, deps.Edge, deps.Device)
 	if err != nil {
 		return nil, err
+	}
+	var replay *deviceStatusReplayCoordinator
+	if cfg.MQTT.Enabled && deps.Edge != nil && deps.Device != nil {
+		if requester, ok := mqttRuntime.(deviceStatusReplayRequester); ok {
+			replay = newDeviceStatusReplayCoordinator(requester, logger)
+			deps.Edge.SetRegistrationListener(replay.Notify)
+		}
 	}
 
 	router := gin.New()
@@ -167,7 +175,7 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 		registerSwaggerUI(router)
 	}
 
-	return &Application{Router: router, Logger: logger, mqtt: mqttRuntime}, nil
+	return &Application{Router: router, Logger: logger, mqtt: mqttRuntime, replay: replay}, nil
 }
 
 // StartRuntime starts process-local runtimes before the HTTP server accepts
@@ -186,6 +194,12 @@ func (a *Application) StartRuntime(ctx context.Context) error {
 func (a *Application) StopRuntime(ctx context.Context) error {
 	if a == nil || a.mqtt == nil {
 		return nil
+	}
+	if a.replay != nil {
+		if err := a.replay.Stop(ctx); err != nil {
+			_ = a.mqtt.Stop(ctx)
+			return err
+		}
 	}
 	return a.mqtt.Stop(ctx)
 }

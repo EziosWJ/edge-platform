@@ -198,3 +198,23 @@ func TestRepositoryDetailReturnsNotFound(t *testing.T) {
 		t.Fatalf("Detail missing error = %v, want ErrNotFound", err)
 	}
 }
+
+func TestRepositoryObserveRegistrationReportsOnlyTrueInsert(t *testing.T) {
+	db := openRepositoryTestDB(t)
+	repository := NewRepository(db)
+	at := time.Date(2026, 9, 21, 4, 0, 0, 0, time.UTC)
+	first, err := repository.ObserveRegistration(context.Background(), Observation{EdgeID: "edge-01", Status: StatusOnline, ReceivedAt: at})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.Created || first.Edge.EdgeID != "edge-01" {
+		t.Fatalf("first registration = %+v, want Created=true", first)
+	}
+	second, err := repository.ObserveRegistration(context.Background(), Observation{EdgeID: "edge-01", Status: StatusOffline, ReceivedAt: at.Add(time.Minute)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Created || second.Edge.Status != StatusOffline {
+		t.Fatalf("duplicate registration = %+v, want Created=false and updated status", second)
+	}
+}

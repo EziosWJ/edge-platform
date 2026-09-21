@@ -13,6 +13,19 @@ type serviceStore struct {
 	page         Page
 }
 
+type registrationServiceStore struct {
+	serviceStore
+	created bool
+}
+
+func (s *registrationServiceStore) ObserveRegistration(_ context.Context, observation Observation) (ObservationResult, error) {
+	s.observations = append(s.observations, observation)
+	return ObservationResult{
+		Edge:    Edge{EdgeID: observation.EdgeID, Status: observation.Status, RegisteredAt: observation.ReceivedAt, LastSeenAt: observation.ReceivedAt},
+		Created: s.created,
+	}, nil
+}
+
 func (s *serviceStore) Observe(_ context.Context, observation Observation) (Edge, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -71,6 +84,31 @@ func TestServicePageRejectsInvalidQueryAndReturnsEmptyRecords(t *testing.T) {
 	}
 	if page.Page != 1 || page.PageSize != 10 || page.Records == nil {
 		t.Fatalf("page = %+v, want empty page", page)
+	}
+}
+
+func TestServiceNotifiesOnlyAfterTrueEdgeRegistration(t *testing.T) {
+	store := &registrationServiceStore{created: true}
+	service, err := NewService(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var notifications int
+	service.SetRegistrationListener(func() { notifications++ })
+	at := time.Date(2026, 9, 21, 1, 2, 3, 0, time.UTC)
+	if _, err := service.Observe(context.Background(), Observation{EdgeID: "edge-01", Status: StatusOnline, ReceivedAt: at}); err != nil {
+		t.Fatal(err)
+	}
+	if notifications != 1 {
+		t.Fatalf("new Edge notifications = %d, want 1", notifications)
+	}
+
+	store.created = false
+	if _, err := service.Observe(context.Background(), Observation{EdgeID: "edge-01", Status: StatusOffline, ReceivedAt: at.Add(time.Minute)}); err != nil {
+		t.Fatal(err)
+	}
+	if notifications != 1 {
+		t.Fatalf("duplicate Edge notifications = %d, want 1", notifications)
 	}
 }
 

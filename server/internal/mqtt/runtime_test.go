@@ -10,12 +10,17 @@ import (
 )
 
 type fakeClient struct {
-	done       chan struct{}
-	once       sync.Once
-	subscribed atomic.Bool
+	done          chan struct{}
+	once          sync.Once
+	mu            sync.Mutex
+	subscriptions [][]Subscription
+	subscribed    atomic.Bool
 }
 
-func (c *fakeClient) Subscribe(context.Context, []Subscription) error {
+func (c *fakeClient) Subscribe(_ context.Context, subscriptions []Subscription) error {
+	c.mu.Lock()
+	c.subscriptions = append(c.subscriptions, append([]Subscription(nil), subscriptions...))
+	c.mu.Unlock()
 	c.subscribed.Store(true)
 	return nil
 }
@@ -92,6 +97,41 @@ func TestRuntimeReadyManualAckAndGracefulStop(t *testing.T) {
 	}
 	if got := r.Status().State; got != StateStopped {
 		t.Fatalf("state = %s", got)
+	}
+}
+
+func TestRuntimeReplayDeviceStatusResubscribesOnlyExistingWildcard(t *testing.T) {
+	cfg := enabledConfig()
+	cfg.ReconnectMin = time.Millisecond
+	cfg.ReconnectMax = 2 * time.Millisecond
+	factory := &fakeFactory{}
+	r, err := NewRuntime(cfg, ConsumerFunc(func(context.Context, IngressMessage) DeliveryOutcome { return OutcomeAccepted }), factory, NewMetrics(nil), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	waitUntil(t, func() bool { return r.Ready() && factory.count() == 1 })
+	factory.mu.Lock()
+	client := factory.clients[0]
+	factory.mu.Unlock()
+	if err := r.ReplayDeviceStatus(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	client.mu.Lock()
+	defer client.mu.Unlock()
+	if len(client.subscriptions) != 2 {
+		t.Fatalf("subscriptions = %+v, want initial subscribe plus replay", client.subscriptions)
+	}
+	got := client.subscriptions[1]
+	if len(got) != 1 || got[0].Filter != cfg.TopicPrefix+"/+/device/+/status" || got[0].QoS != 1 {
+		t.Fatalf("replay subscriptions = %+v", got)
+	}
+	stopCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := r.Stop(stopCtx); err != nil {
+		t.Fatal(err)
 	}
 }
 

@@ -72,6 +72,10 @@ func (a *mqttRuntimeAdapter) Start(ctx context.Context) error { return a.runtime
 
 func (a *mqttRuntimeAdapter) Stop(ctx context.Context) error { return a.runtime.Stop(ctx) }
 
+func (a *mqttRuntimeAdapter) ReplayDeviceStatus(ctx context.Context) error {
+	return a.runtime.ReplayDeviceStatus(ctx)
+}
+
 func (a *mqttRuntimeAdapter) Ready(context.Context) error {
 	if a.runtime.Ready() {
 		return nil

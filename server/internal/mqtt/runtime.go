@@ -36,6 +36,11 @@ type ClientFactory interface {
 	Connect(context.Context, uint64, PublishHandler) (Client, error)
 }
 
+var (
+	ErrRuntimeNotReady = errors.New("mqtt runtime is not ready")
+	ErrRuntimeDisabled = errors.New("mqtt runtime is disabled")
+)
+
 type Runtime struct {
 	cfg      Config
 	consumer Consumer
@@ -227,6 +232,37 @@ func subscriptions(prefix string) []Subscription {
 	}
 	return result
 }
+
+// ReplayDeviceStatus re-subscribes the existing DeviceStatus wildcard. MQTT
+// brokers use this operation to replay retained current status without
+// exposing a general dynamic-subscription API to business code.
+func (r *Runtime) ReplayDeviceStatus(ctx context.Context) error {
+	if !r.cfg.Enabled {
+		return ErrRuntimeDisabled
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	r.mu.RLock()
+	if r.status.State != StateReady || r.client == nil || !r.accepting.Load() || r.forceStop.Load() {
+		r.mu.RUnlock()
+		return ErrRuntimeNotReady
+	}
+	client := r.client
+	// Keep the read lock while subscribing so connection shutdown cannot close
+	// the client underneath the explicit replay operation.
+	err := client.Subscribe(ctx, []Subscription{{Filter: deviceStatusFilter(r.cfg.TopicPrefix), QoS: 1}})
+	r.mu.RUnlock()
+	if err != nil {
+		// The existing runtime reconnect/backoff path owns recovery. The
+		// coordinator must not retry this operation in a loop.
+		r.requestReconnect()
+		return err
+	}
+	return nil
+}
+
+func deviceStatusFilter(prefix string) string { return prefix + "/+/device/+/status" }
 
 func (r *Runtime) waitBackoff(ctx context.Context, retry int) bool {
 	delay := r.cfg.ReconnectMin

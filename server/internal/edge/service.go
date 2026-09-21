@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 )
 
 type Store interface {
@@ -12,7 +13,24 @@ type Store interface {
 	Detail(context.Context, string) (Edge, error)
 }
 
-type Service struct{ store Store }
+type ObservationResult struct {
+	Edge    Edge
+	Created bool
+}
+
+// RegistrationStore is an optional repository seam used by M3 to tell a
+// composition-layer coordinator whether this observation really inserted a
+// new Edge. Existing Edge stores keep the original Observe contract.
+type RegistrationStore interface {
+	ObserveRegistration(context.Context, Observation) (ObservationResult, error)
+}
+
+type Service struct {
+	store Store
+
+	listenerMu   sync.RWMutex
+	onRegistered func()
+}
 
 func NewService(store Store) (*Service, error) {
 	if store == nil {
@@ -21,12 +39,39 @@ func NewService(store Store) (*Service, error) {
 	return &Service{store: store}, nil
 }
 
+// SetRegistrationListener installs the composition-layer callback invoked
+// after a real first Edge insertion. The callback must be non-blocking.
+func (s *Service) SetRegistrationListener(listener func()) {
+	s.listenerMu.Lock()
+	s.onRegistered = listener
+	s.listenerMu.Unlock()
+}
+
 func (s *Service) Observe(ctx context.Context, observation Observation) (Edge, error) {
 	if strings.TrimSpace(observation.EdgeID) == "" || !validStatus(observation.Status) || observation.ReceivedAt.IsZero() {
 		return Edge{}, ErrInvalid
 	}
 	observation.ReceivedAt = observation.ReceivedAt.UTC()
+	if registrationStore, ok := s.store.(RegistrationStore); ok {
+		result, err := registrationStore.ObserveRegistration(ctx, observation)
+		if err != nil {
+			return Edge{}, err
+		}
+		if result.Created {
+			s.notifyRegistration()
+		}
+		return normalizeEdge(result.Edge), nil
+	}
 	return s.store.Observe(ctx, observation)
+}
+
+func (s *Service) notifyRegistration() {
+	s.listenerMu.RLock()
+	listener := s.onRegistered
+	s.listenerMu.RUnlock()
+	if listener != nil {
+		listener()
+	}
 }
 
 func (s *Service) Page(ctx context.Context, query PageQuery) (Page, error) {
