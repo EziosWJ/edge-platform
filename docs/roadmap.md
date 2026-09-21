@@ -85,6 +85,8 @@ Acceptance：
 
 目标：把 Edge 原始上报转换为 Cloud 可复用的设备语义。
 
+设计决策见 [ADR-0013: DataPoint identity、Raw mapping 与 CurrentValue 语义](adr/0013-datapoint-identity-raw-mapping-and-currentvalue-semantics.md)。
+
 In Scope：
 - DataPoint definition
 - semantic point key
