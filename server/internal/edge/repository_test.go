@@ -34,7 +34,7 @@ CREATE TABLE edge (
 	return db
 }
 
-func TestRepositoryObserveUsesAtomicUpsertAndKeepsFirstRegistration(t *testing.T) {
+func TestRepositoryObserveUsesAtomicUpsertAndKeepsEarliestRegistration(t *testing.T) {
 	repository := NewRepository(openRepositoryTestDB(t))
 	ctx := context.Background()
 	first := time.Date(2026, 9, 21, 1, 0, 0, 0, time.UTC)
@@ -59,8 +59,8 @@ func TestRepositoryObserveUsesAtomicUpsertAndKeepsFirstRegistration(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.RegisteredAt != first || updated.LastSeenAt != later || updated.Status != StatusOffline {
-		t.Fatalf("older observation changed current projection = %+v, want registeredAt=%v lastSeenAt=%v status=%s", updated, first, later, StatusOffline)
+	if updated.RegisteredAt != earlier || updated.LastSeenAt != later || updated.Status != StatusOffline {
+		t.Fatalf("older observation projection = %+v, want registeredAt=%v lastSeenAt=%v status=%s", updated, earlier, later, StatusOffline)
 	}
 
 	// Equal Cloud receive times are ordered by the atomic statement execution,
@@ -69,7 +69,7 @@ func TestRepositoryObserveUsesAtomicUpsertAndKeepsFirstRegistration(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.RegisteredAt != first || updated.LastSeenAt != later || updated.Status != StatusOnline {
+	if updated.RegisteredAt != earlier || updated.LastSeenAt != later || updated.Status != StatusOnline {
 		t.Fatalf("equal-time observation was not applied = %+v", updated)
 	}
 
@@ -78,8 +78,34 @@ func TestRepositoryObserveUsesAtomicUpsertAndKeepsFirstRegistration(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.RegisteredAt != first || updated.LastSeenAt != repeatedAt || updated.Status != StatusOnline {
+	if updated.RegisteredAt != earlier || updated.LastSeenAt != repeatedAt || updated.Status != StatusOnline {
 		t.Fatalf("repeated status did not refresh lastSeenAt = %+v", updated)
+	}
+}
+
+func TestRepositoryObserveCorrectsRegistrationWhenEarlierDiscoveryCommitsLater(t *testing.T) {
+	repository := NewRepository(openRepositoryTestDB(t))
+	ctx := context.Background()
+	earlier := time.Date(2026, 9, 21, 1, 0, 0, 0, time.UTC)
+	later := earlier.Add(time.Second)
+
+	if _, err := repository.Observe(ctx, Observation{
+		EdgeID: "edge-reversed-discovery", Status: StatusOffline, ReceivedAt: later,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := repository.Observe(ctx, Observation{
+		EdgeID: "edge-reversed-discovery", Status: StatusOnline, ReceivedAt: earlier,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.RegisteredAt != earlier {
+		t.Fatalf("registeredAt = %v, want earliest Cloud ReceivedAt %v", result.RegisteredAt, earlier)
+	}
+	if result.LastSeenAt != later || result.Status != StatusOffline {
+		t.Fatalf("current projection regressed = %+v, want lastSeenAt=%v status=%s", result, later, StatusOffline)
 	}
 }
 
