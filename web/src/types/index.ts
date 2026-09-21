@@ -8,6 +8,7 @@ export type {
   ApiResponse,
   ApiStatus,
 } from "./api";
+export type { EdgePageQuery, EdgeRecord, EdgeStatus } from "./edge";
 export type {
   DeptBatchDeleteRequest,
   DeptCreateRequest,
