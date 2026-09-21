@@ -29,6 +29,13 @@ project/
 - `task frontend:build`
 - `task check`
 
+Agent 验证按改动边界选择最小反馈闭环：
+
+- Web 页面局部文案、样式或交互优先通过热更新手动确认；已有对应浏览器脚本时只运行该脚本，例如 `npm --prefix web run test:layout` 或 `npm --prefix web run test:route-loading`。
+- Web 公共组件、共享 Hook、路由、类型或构建配置改动运行 `task frontend:lint`；涉及类型或构建时再运行 `task frontend:build`，并运行受影响的浏览器脚本。
+- Server 单模块改动运行受影响 Go package 的测试；涉及数据库契约时运行 `task backend:integration`，涉及 MQTT Broker 时运行 `task backend:mqtt-integration`。
+- 跨前后端改动、重大功能或提交/合并前运行 `task check`。
+
 Cloud 正式生产数据库为 PostgreSQL。SQLite 仅保留本地/测试兼容，不要把它当作新 Cloud 业务的生产约束。
 
 ## 架构规则
