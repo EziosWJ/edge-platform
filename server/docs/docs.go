@@ -148,6 +148,107 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/edge/page": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Edge"
+                ],
+                "summary": "Edge 分页查询",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码，默认 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，1-500，默认 10",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Edge 状态：ONLINE 或 OFFLINE",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Edge ID，精确匹配",
+                        "name": "edgeId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/edge.ApiEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/edge.ApiEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/edge.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/edge/{edgeId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Edge"
+                ],
+                "summary": "Edge 详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Edge ID",
+                        "name": "edgeId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/edge.ApiEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/edge.ApiEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/edge.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/system/config": {
             "post": {
                 "security": [
@@ -4037,6 +4138,18 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "integer"
+                }
+            }
+        },
+        "edge.ApiEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {},
+                "message": {
+                    "type": "string"
                 }
             }
         },

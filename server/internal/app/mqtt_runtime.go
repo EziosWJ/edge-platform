@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/EziosWJ/edge-platform/server/internal/config"
+	"github.com/EziosWJ/edge-platform/server/internal/edge"
 	"github.com/EziosWJ/edge-platform/server/internal/mqtt"
 	platformhttp "github.com/EziosWJ/edge-platform/server/internal/platform/http"
 	"github.com/prometheus/client_golang/prometheus"
@@ -18,17 +19,16 @@ var errMQTTNotReady = errors.New("mqtt runtime is not ready")
 // newMQTTRuntime selects the injected runtime used by tests or constructs the
 // production MQTT runtime. MQTT remains an in-process component; this adapter
 // is the only place where the internal ingest types meet the HTTP seam.
-func newMQTTRuntime(cfg config.MQTTConfig, runtime platformhttp.MQTTRuntime) (platformhttp.MQTTRuntime, error) {
+func newMQTTRuntime(cfg config.MQTTConfig, runtime platformhttp.MQTTRuntime, edgeServices ...*edge.Service) (platformhttp.MQTTRuntime, error) {
 	if runtime != nil {
 		return runtime, nil
 	}
+	var edgeService *edge.Service
+	if len(edgeServices) > 0 {
+		edgeService = edgeServices[0]
+	}
 
-	consumer := mqtt.ConsumerFunc(func(context.Context, mqtt.IngressMessage) mqtt.DeliveryOutcome {
-		// M1 deliberately has no Edge/Device/Event persistence. A successfully
-		// parsed ingress message is accepted at this seam so QoS 1 can be ACKed;
-		// later domain modules replace this sink with an adapter.
-		return mqtt.OutcomeAccepted
-	})
+	consumer := newEdgeStatusConsumer(edgeService)
 	internalConfig := mqtt.Config{
 		Enabled:           cfg.Enabled,
 		BrokerURL:         cfg.URL,

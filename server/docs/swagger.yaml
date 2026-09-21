@@ -218,6 +218,14 @@ definitions:
       status:
         type: integer
     type: object
+  edge.ApiEnvelope:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
   filemgmt.ApiEnvelope:
     properties:
       code:
@@ -544,6 +552,69 @@ paths:
       summary: 当前用户可见菜单
       tags:
       - 认证
+  /api/edge/{edgeId}:
+    get:
+      parameters:
+      - description: Edge ID
+        in: path
+        name: edgeId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/edge.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/edge.ApiEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/edge.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Edge 详情
+      tags:
+      - Edge
+  /api/edge/page:
+    get:
+      parameters:
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，1-500，默认 10
+        in: query
+        name: pageSize
+        type: integer
+      - description: Edge 状态：ONLINE 或 OFFLINE
+        in: query
+        name: status
+        type: string
+      - description: Edge ID，精确匹配
+        in: query
+        name: edgeId
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/edge.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/edge.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/edge.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Edge 分页查询
+      tags:
+      - Edge
   /api/system/config:
     post:
       parameters:

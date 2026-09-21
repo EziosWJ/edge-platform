@@ -14,6 +14,7 @@ import (
 	"github.com/EziosWJ/edge-platform/server/internal/config"
 	"github.com/EziosWJ/edge-platform/server/internal/dept"
 	"github.com/EziosWJ/edge-platform/server/internal/dictionary"
+	"github.com/EziosWJ/edge-platform/server/internal/edge"
 	"github.com/EziosWJ/edge-platform/server/internal/filemgmt"
 	"github.com/EziosWJ/edge-platform/server/internal/logmgmt"
 	"github.com/EziosWJ/edge-platform/server/internal/notification"
@@ -24,8 +25,8 @@ import (
 )
 
 // Dependencies holds the named business services the HTTP application assembles.
-// Core management services are required; notification routes are enabled when
-// the optional Notification service is supplied.
+// Core management services are required; notification and M2 Edge routes are
+// enabled when their optional services are supplied.
 type Dependencies struct {
 	Auth         *auth.Service
 	RBAC         *rbac.Service
@@ -36,6 +37,7 @@ type Dependencies struct {
 	File         *filemgmt.Service
 	Log          *logmgmt.Service
 	Notification *notification.Service
+	Edge         *edge.Service
 	MQTT         platformhttp.MQTTRuntime
 }
 
@@ -57,7 +59,7 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 	if err != nil {
 		return nil, err
 	}
-	mqttRuntime, err := newMQTTRuntime(cfg.MQTT, deps.MQTT)
+	mqttRuntime, err := newMQTTRuntime(cfg.MQTT, deps.MQTT, deps.Edge)
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +149,16 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 			return nil, fmt.Errorf("create notification handler: %w", err)
 		}
 		notification.RegisterRoutes(system, notificationHandler)
+	}
+
+	if deps.Edge != nil {
+		edgeHandler, err := edge.NewHandler(deps.Edge)
+		if err != nil {
+			return nil, fmt.Errorf("create edge handler: %w", err)
+		}
+		edges := router.Group("/api/edge")
+		edges.Use(auth.BearerMiddleware(deps.Auth))
+		edge.RegisterRoutes(edges, edgeHandler)
 	}
 
 	if cfg.Environment == config.EnvironmentDev && cfg.Swagger.Enabled {
