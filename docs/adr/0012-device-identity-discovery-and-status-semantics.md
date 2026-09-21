@@ -5,7 +5,7 @@
 
 M3 为 Device 分配 Cloud 全局唯一且稳定的随机 UUID `deviceId`，并另存来源映射 `(edgeId, sourceDeviceId)`；数据库以 `device_id` 为主键并为来源二元组建立唯一约束。API 把 UUID 表示为不透明字符串，调用方不得依赖其生成顺序或内部结构。REST、未来 DataPoint 与 HMI 使用 Cloud `deviceId`，MQTT Topic/envelope 中 Collector 范围的 `deviceId` 对外称为 `sourceDeviceId`。不同 Edge 可以上报相同 `sourceDeviceId`，它们自动发现为不同 Device；现有协议不能证明两个来源代表同一物理设备，因此从 Edge A 改到 Edge B 在 M3 是新发现，不自动迁移或合并，未来迁移必须由显式生命周期契约完成。
 
-第一次为已登记 Edge 收到领域有效的 `device-status/v1` 时自动登记 Device。DeviceStatus 永远不能创建 Edge。若 retained DeviceStatus 先于父 EdgeStatus 到达，Cloud ACK 该消息；父 Edge 完成 Registration 后触发一次合并、限频的 DeviceStatus 重新订阅，让 Broker 重放 retained current status。该协调只维护一个有界的重放信号，不保存通用消息 staging；未知父且非 retained 的违约消息永久拒绝并 ACK，基础设施或数据库失败仍可重试。
+第一次为已登记 Edge 收到领域有效的 `device-status/v1` 时自动登记 Device。DeviceStatus 永远不能创建 Edge。若 DeviceStatus 先于父 EdgeStatus 到达，Cloud ACK 该消息且不创建 Edge 或 Device；父 Edge 完成 Registration 后触发一次合并、限频的 DeviceStatus 重新订阅，让 Broker 重放 retained current status。接收侧本次 delivery 的 retained flag 不用于判断该消息是否领域有效或上游是否按契约发布：对已经存在的订阅者，原始发布即使设置 retain=true，实时转发的 delivery 也可以表现为 retained=false；只有 Broker 作为 retained replay 交付时该标志才可靠表示“这是保留消息重放”。因此未知父 DeviceStatus 不因 retained=false 被视为毒消息，也不通过不 ACK/reconnect 循环驱动重投。该协调只维护一个有界的重放信号，不保存 payload 或通用消息 staging；如果上游实际上没有保留 current DeviceStatus，replay 后仍没有对应状态，M3 不通过缓存、消息历史或无限重试弥补该上游契约缺失。结构/语义无效的 DeviceStatus 仍永久拒绝并 ACK，基础设施或数据库失败仍可重试。
 
 父约束只要求 Edge 已登记，不要求它当前 `ONLINE`；已登记但 `OFFLINE` 的 Edge 仍可发现或更新 Device。DeviceStatus 不得改变 Edge 的状态或 `lastSeenAt`。每次真正插入新 Edge 时，协调器请求 MQTT Runtime 重新订阅既有 DeviceStatus wildcard；它最多维护一个执行中操作和一个 dirty 标志，并发 Registration 合并，执行期间的新 Registration 最多触发一次后续重放。失败由 MQTT Runtime 使用既有有界退避恢复，不通过 DeviceStatus 的不 ACK/reconnect 循环驱动；进程崩溃后，正常启动订阅也会重新取得 retained 状态。
 
