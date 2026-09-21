@@ -46,19 +46,24 @@ type Runtime struct {
 	reliable *reliableQueue
 	raw      *rawQueue
 
-	mu          sync.RWMutex
-	status      Status
-	client      Client
-	generation  uint64
-	reconnect   chan struct{}
-	cancel      context.CancelFunc
-	workersDone chan struct{}
-	done        chan struct{}
-	stopWorkers chan struct{}
-	workerWG    sync.WaitGroup
-	stopOnce    sync.Once
-	started     atomic.Bool
-	accepting   atomic.Bool
+	mu               sync.RWMutex
+	status           Status
+	client           Client
+	generation       uint64
+	reconnect        chan struct{}
+	cancel           context.CancelFunc
+	workersDone      chan struct{}
+	done             chan struct{}
+	stopWorkers      chan struct{}
+	workerWG         sync.WaitGroup
+	stopOnce         sync.Once
+	activeConsumers  map[uint64]context.CancelFunc
+	nextConsumerID   uint64
+	started          atomic.Bool
+	accepting        atomic.Bool
+	forceStop        atomic.Bool
+	reconnectBlocked atomic.Int32
+	reconnectPending atomic.Bool
 }
 
 func NewRuntime(cfg Config, consumer Consumer, factory ClientFactory, metrics *Metrics, logger *slog.Logger) (*Runtime, error) {
@@ -88,7 +93,8 @@ func NewRuntime(cfg Config, consumer Consumer, factory ClientFactory, metrics *M
 		parser: parser, reliable: newReliableQueue(cfg.ReliableQueueSize), raw: newRawQueue(cfg.RawQueueSize),
 		reconnect: make(chan struct{}, 1), cancel: cancel,
 		workersDone: make(chan struct{}), done: make(chan struct{}), stopWorkers: make(chan struct{}),
-		status: Status{Enabled: cfg.Enabled, State: StateDisabled, Protocol: cfg.Protocol, Subscriptions: subscriptionStatus(cfg.TopicPrefix)},
+		activeConsumers: make(map[uint64]context.CancelFunc),
+		status:          Status{Enabled: cfg.Enabled, State: StateDisabled, Protocol: cfg.Protocol, Subscriptions: subscriptionStatus(cfg.TopicPrefix)},
 	}
 	return r, nil
 }
@@ -171,6 +177,7 @@ func (r *Runtime) run(parent context.Context) {
 		err = client.Subscribe(subCtx, subscriptions(r.cfg.TopicPrefix))
 		cancelSub()
 		if err != nil {
+			r.markDisconnected()
 			r.recordError("SUBSCRIBE_FAILED", err, retry)
 			_ = client.Close(context.Background())
 			if !r.waitBackoff(ctx, retry) {
@@ -279,6 +286,12 @@ func (r *Runtime) handleReceived(generation uint64, message Received) {
 func (r *Runtime) consumeLoop(raw bool) {
 	defer r.workerWG.Done()
 	for {
+		if r.forceStop.Load() {
+			if raw {
+				r.discardRawQueue()
+			}
+			return
+		}
 		var item *inbound
 		if raw {
 			item = r.raw.pop()
@@ -302,17 +315,57 @@ func (r *Runtime) consumeLoop(raw bool) {
 func (r *Runtime) consume(item *inbound) {
 	kind := string(item.Delivery.Message.Kind())
 	ctx, cancel := context.WithTimeout(context.Background(), r.cfg.ConsumerTimeout)
+	consumerID := r.registerActiveConsumer(cancel)
+	defer r.unregisterActiveConsumer(consumerID)
+	defer cancel()
 	done := make(chan DeliveryOutcome, 1)
 	go func() { done <- r.consumer.Consume(ctx, item.Delivery.Message) }()
 	var outcome DeliveryOutcome
+	interrupted := false
+	timedOut := false
+	blockedReconnect := false
 	select {
 	case outcome = <-done:
+		if err := ctx.Err(); err != nil {
+			interrupted = true
+			timedOut = errors.Is(err, context.DeadlineExceeded)
+			if timedOut && r.metrics != nil {
+				r.metrics.Timeouts.WithLabelValues(kind).Inc()
+			}
+		}
 	case <-ctx.Done():
-		cancel()
-		outcome = OutcomeRetry
-		if r.metrics != nil {
+		interrupted = true
+		timedOut = errors.Is(ctx.Err(), context.DeadlineExceeded)
+		if timedOut && r.metrics != nil {
 			r.metrics.Timeouts.WithLabelValues(kind).Inc()
 		}
+		if timedOut {
+			r.blockReconnect()
+			r.reconnectPending.Store(true)
+			r.beginReconnect()
+			blockedReconnect = true
+		}
+		cancel()
+		// Do not let the next connection receive this delivery while the
+		// previous Consumer invocation is still running. A Consumer that
+		// ignores cancellation deliberately holds this worker, preserving
+		// the at-most-one in-process invocation property without spawning an
+		// unbounded number of goroutines.
+		<-done
+	}
+	if interrupted {
+		if blockedReconnect {
+			r.unblockReconnect()
+		}
+		if timedOut {
+			if r.metrics != nil {
+				r.metrics.Retries.WithLabelValues(kind).Inc()
+			}
+			if !blockedReconnect && r.accepting.Load() && !r.forceStop.Load() {
+				r.requestReconnect()
+			}
+		}
+		return
 	}
 	cancel()
 	switch outcome {
@@ -330,7 +383,9 @@ func (r *Runtime) consume(item *inbound) {
 		if r.metrics != nil {
 			r.metrics.Retries.WithLabelValues(kind).Inc()
 		}
-		r.requestReconnect()
+		if r.accepting.Load() && !r.forceStop.Load() {
+			r.requestReconnect()
+		}
 	default:
 		if r.metrics != nil {
 			r.metrics.Rejected.WithLabelValues(kind).Inc()
@@ -339,12 +394,47 @@ func (r *Runtime) consume(item *inbound) {
 	}
 }
 
+func (r *Runtime) registerActiveConsumer(cancel context.CancelFunc) uint64 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.nextConsumerID++
+	id := r.nextConsumerID
+	r.activeConsumers[id] = cancel
+	return id
+}
+
+func (r *Runtime) unregisterActiveConsumer(id uint64) {
+	r.mu.Lock()
+	delete(r.activeConsumers, id)
+	r.mu.Unlock()
+}
+
+func (r *Runtime) cancelActiveConsumers() {
+	r.mu.RLock()
+	cancels := make([]context.CancelFunc, 0, len(r.activeConsumers))
+	for _, cancel := range r.activeConsumers {
+		cancels = append(cancels, cancel)
+	}
+	r.mu.RUnlock()
+	for _, cancel := range cancels {
+		cancel()
+	}
+}
+
+func (r *Runtime) discardRawQueue() {
+	for r.raw.pop() != nil {
+		if r.metrics != nil {
+			r.metrics.QueueDrops.WithLabelValues("raw").Inc()
+		}
+	}
+}
+
 func (r *Runtime) ack(generation uint64, ack func() error) {
 	if ack == nil {
 		return
 	}
 	r.mu.RLock()
-	current := r.generation == generation && r.status.State != StateStopped
+	current := r.generation == generation && r.status.State != StateStopped && !r.forceStop.Load()
 	r.mu.RUnlock()
 	if current {
 		if err := ack(); err != nil {
@@ -354,10 +444,50 @@ func (r *Runtime) ack(generation uint64, ack func() error) {
 }
 
 func (r *Runtime) requestReconnect() {
+	if !r.accepting.Load() || r.forceStop.Load() {
+		return
+	}
+	if r.reconnectBlocked.Load() > 0 {
+		r.reconnectPending.Store(true)
+		r.beginReconnect()
+		return
+	}
+	r.beginReconnect()
+	r.signalReconnect()
+}
+
+func (r *Runtime) signalReconnect() {
 	select {
 	case r.reconnect <- struct{}{}:
 	default:
 	}
+}
+
+func (r *Runtime) blockReconnect() {
+	r.reconnectBlocked.Add(1)
+}
+
+func (r *Runtime) unblockReconnect() {
+	if r.reconnectBlocked.Add(-1) != 0 {
+		return
+	}
+	if r.reconnectPending.Swap(false) {
+		r.requestReconnect()
+	}
+}
+
+func (r *Runtime) beginReconnect() {
+	r.mu.Lock()
+	if !r.accepting.Load() || r.forceStop.Load() {
+		r.mu.Unlock()
+		return
+	}
+	r.status.State = StateReconnecting
+	r.status.DisconnectedAt = time.Now()
+	for key := range r.status.Subscriptions {
+		r.status.Subscriptions[key] = false
+	}
+	r.mu.Unlock()
 }
 
 func (r *Runtime) stopConsumers() {
@@ -391,6 +521,9 @@ func (r *Runtime) Stop(ctx context.Context) error {
 	select {
 	case <-r.workersDone:
 	case <-ctx.Done():
+		r.forceStop.Store(true)
+		r.setState(StateStopped, "")
+		r.cancelActiveConsumers()
 		r.cancel()
 		return ctx.Err()
 	}
@@ -399,6 +532,10 @@ func (r *Runtime) Stop(ctx context.Context) error {
 	case <-r.done:
 		return nil
 	case <-ctx.Done():
+		r.forceStop.Store(true)
+		r.setState(StateStopped, "")
+		r.cancelActiveConsumers()
+		r.cancel()
 		return ctx.Err()
 	}
 }
@@ -430,8 +567,14 @@ func (r *Runtime) setState(state RuntimeState, errorCode string) {
 }
 func (r *Runtime) setReady() {
 	r.mu.Lock()
+	if r.status.State == StateReconnecting || r.status.State == StateStopping || r.status.State == StateStopped || !r.accepting.Load() || r.forceStop.Load() {
+		r.mu.Unlock()
+		return
+	}
 	r.status.State = StateReady
 	r.status.ConnectedAt = time.Now()
+	r.status.RetryCount = 0
+	r.status.NextRetryAt = time.Time{}
 	for key := range r.status.Subscriptions {
 		r.status.Subscriptions[key] = true
 	}

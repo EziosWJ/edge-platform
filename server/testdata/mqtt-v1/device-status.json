@@ -1,0 +1,1 @@
+{"schema":"device-status/v1","messageId":"20260917T070000.123456789Z-device-status","edgeId":"edge-01","deviceId":"device-01","timestamp":"2026-09-16T23:00:00.123456789Z","data":{"status":"ONLINE","lastSuccessAt":"2026-09-16T22:59:59.123456789Z","lastAttemptAt":"2026-09-16T23:00:00.123456789Z","error":null}}

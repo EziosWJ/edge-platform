@@ -5,14 +5,17 @@ package integration
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/EziosWJ/edge-platform/server/internal/mqtt"
 	mqtt311 "github.com/eclipse/paho.mqtt.golang"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func TestMQTTRuntimeProtocolsAndTransports(t *testing.T) {
@@ -55,7 +58,7 @@ func TestMQTTRuntimeProtocolsAndTransports(t *testing.T) {
 			if test.tls {
 				publishTLS = broker.tlsConfig(t, test.clientCert)
 			}
-			publishMQTTMessage(t, endpointForTest(broker, publishTLS), publishTLS, "edge/edge-1/device/device-1/event", ingressPayload("device-event/v1", "after-restart", "edge-1", "device-1"), 1)
+			publishMQTTMessage(t, endpointForTest(broker, publishTLS), publishTLS, "edge/edge-01/device/device-01/event", readMQTTV1Fixture(t, "device-event.json"), 1)
 			waitForKinds(t, received, 1)
 		})
 	}
@@ -79,7 +82,7 @@ func TestMQTTRuntimePersistentSessions(t *testing.T) {
 			startRuntime(t, first)
 			stopRuntime(t, first)
 
-			publishMQTTMessage(t, broker.plaintext, nil, "edge/edge-1/device/device-1/event", ingressPayload("device-event/v1", "queued", "edge-1", "device-1"), 1)
+			publishMQTTMessage(t, broker.plaintext, nil, "edge/edge-01/device/device-01/event", readMQTTV1Fixture(t, "device-event.json"), 1)
 
 			second, err := mqtt.NewRuntime(cfg, consumer, nil, mqtt.NewMetrics(nil), nil)
 			if err != nil {
@@ -90,6 +93,117 @@ func TestMQTTRuntimePersistentSessions(t *testing.T) {
 			stopRuntime(t, second)
 		})
 	}
+}
+
+func TestMQTTRuntimeContractMetadata(t *testing.T) {
+	broker := startMQTTBroker(t, mqttBrokerOptions{})
+	publishMQTTMessageWithRetain(t, broker.plaintext, nil, "edge/edge-01/status", readMQTTV1Fixture(t, "edge-status.json"), 1, true)
+
+	registry := prometheus.NewRegistry()
+	metrics := mqtt.NewMetrics(registry)
+	received := make(chan mqtt.IngressMessage, 2)
+	consumer := mqtt.ConsumerFunc(func(_ context.Context, message mqtt.IngressMessage) mqtt.DeliveryOutcome {
+		received <- message
+		return mqtt.OutcomeAccepted
+	})
+	runtime, err := mqtt.NewRuntime(runtimeConfig(t, broker, mqtt.ProtocolMQTT5, false, false), consumer, nil, metrics, nil)
+	if err != nil {
+		t.Fatalf("create MQTT runtime: %v", err)
+	}
+	startRuntime(t, runtime)
+
+	select {
+	case message := <-received:
+		if message.Kind() != mqtt.KindEdgeStatus || !message.Metadata().Retained {
+			t.Fatalf("retained status delivery = kind %q, retained %v", message.Kind(), message.Metadata().Retained)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("retained status replay was not delivered")
+	}
+
+	publishMQTTMessage(t, broker.plaintext, nil, "edge/edge-01/device/device-01/raw", readMQTTV1Fixture(t, "raw-register-snapshot.json"), 0)
+	select {
+	case message := <-received:
+		if message.Kind() != mqtt.KindRawRegisterSnapshot {
+			t.Fatalf("raw delivery kind = %q", message.Kind())
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("raw QoS0 delivery was not received")
+	}
+
+	if got := contractViolationCount(t, registry, string(mqtt.ViolationQoS)); got != 0 {
+		t.Fatalf("QoS contract violations = %v, want 0", got)
+	}
+	if got := contractViolationCount(t, registry, string(mqtt.ViolationRetained)); got != 0 {
+		t.Fatalf("retain contract violations = %v, want 0", got)
+	}
+}
+
+func TestMQTTRuntimeTLSFailurePaths(t *testing.T) {
+	t.Run("wrong-ca-keeps-runtime-unready", func(t *testing.T) {
+		broker := startMQTTBroker(t, mqttBrokerOptions{})
+		cfg := runtimeConfig(t, broker, mqtt.ProtocolMQTT5, true, false)
+		cfg.TLS.CACertFile = broker.tlsFiles.serverCertPath
+		runtime, err := mqtt.NewRuntime(cfg, mqtt.ConsumerFunc(func(context.Context, mqtt.IngressMessage) mqtt.DeliveryOutcome {
+			return mqtt.OutcomeAccepted
+		}), nil, mqtt.NewMetrics(nil), nil)
+		if err != nil {
+			t.Fatalf("create runtime with wrong CA: %v", err)
+		}
+		startRuntimeWithoutWaitingForReady(t, runtime)
+		waitForRuntimeErrorCode(t, runtime, "CONNECT_FAILED")
+		if runtime.Ready() {
+			t.Fatal("runtime became ready with the wrong CA")
+		}
+	})
+
+	t.Run("hostname-mismatch-keeps-runtime-unready", func(t *testing.T) {
+		broker := startMQTTBroker(t, mqttBrokerOptions{serverCertificateDNSOnly: true})
+		cfg := runtimeConfig(t, broker, mqtt.ProtocolMQTT5, true, false)
+		runtime, err := mqtt.NewRuntime(cfg, mqtt.ConsumerFunc(func(context.Context, mqtt.IngressMessage) mqtt.DeliveryOutcome {
+			return mqtt.OutcomeAccepted
+		}), nil, mqtt.NewMetrics(nil), nil)
+		if err != nil {
+			t.Fatalf("create runtime with hostname mismatch: %v", err)
+		}
+		startRuntimeWithoutWaitingForReady(t, runtime)
+		waitForRuntimeErrorCode(t, runtime, "CONNECT_FAILED")
+		if runtime.Ready() {
+			t.Fatal("runtime became ready with a hostname mismatch")
+		}
+	})
+
+	t.Run("client-certificate-key-mismatch-fails-validation", func(t *testing.T) {
+		broker := startMQTTBroker(t, mqttBrokerOptions{requireClientCertificate: true})
+		cfg := runtimeConfig(t, broker, mqtt.ProtocolMQTT5, true, true)
+		cfg.TLS.ClientKeyFile = broker.tlsFiles.serverKeyPath
+		if _, err := mqtt.NewRuntime(cfg, mqtt.ConsumerFunc(func(context.Context, mqtt.IngressMessage) mqtt.DeliveryOutcome {
+			return mqtt.OutcomeAccepted
+		}), nil, mqtt.NewMetrics(nil), nil); err == nil {
+			t.Fatal("client certificate/private key mismatch was accepted")
+		}
+	})
+}
+
+func contractViolationCount(t *testing.T, registry *prometheus.Registry, kind string) float64 {
+	t.Helper()
+	families, err := registry.Gather()
+	if err != nil {
+		t.Fatalf("gather MQTT metrics: %v", err)
+	}
+	for _, family := range families {
+		if family.GetName() != "mqtt_ingress_contract_violations_total" {
+			continue
+		}
+		for _, metric := range family.GetMetric() {
+			for _, label := range metric.GetLabel() {
+				if label.GetName() == "kind" && label.GetValue() == kind {
+					return metric.GetCounter().GetValue()
+				}
+			}
+		}
+	}
+	return 0
 }
 
 func runtimeConfig(t *testing.T, broker *mqttBrokerFixture, protocol mqtt.Protocol, useTLS, useClientCertificate bool) mqtt.Config {
@@ -132,6 +246,14 @@ func startRuntime(t *testing.T, runtime *mqtt.Runtime) {
 	waitForRuntimeReady(t, runtime, time.Now().Add(45*time.Second))
 }
 
+func startRuntimeWithoutWaitingForReady(t *testing.T, runtime *mqtt.Runtime) {
+	t.Helper()
+	if err := runtime.Start(context.Background()); err != nil {
+		t.Fatalf("start MQTT runtime: %v", err)
+	}
+	t.Cleanup(func() { stopRuntime(t, runtime) })
+}
+
 func stopRuntime(t *testing.T, runtime *mqtt.Runtime) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -165,6 +287,18 @@ func waitForReconnect(t *testing.T, runtime *mqtt.Runtime, previous time.Time) {
 	t.Fatalf("MQTT runtime did not reconnect: %+v", runtime.Status())
 }
 
+func waitForRuntimeErrorCode(t *testing.T, runtime *mqtt.Runtime, want string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		if status := runtime.Status(); status.RecentErrorCode == want {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatalf("runtime did not report error code %q: %+v", want, runtime.Status())
+}
+
 func publishAllIngressMessages(t *testing.T, broker *mqttBrokerFixture, useTLS, clientCertificate bool) {
 	t.Helper()
 	tlsConfig := (*tls.Config)(nil)
@@ -174,10 +308,10 @@ func publishAllIngressMessages(t *testing.T, broker *mqttBrokerFixture, useTLS, 
 			tlsConfig = broker.tlsConfig(t, true)
 		}
 	}
-	publishMQTTMessage(t, endpointForTest(broker, tlsConfig), tlsConfig, "edge/edge-1/status", ingressPayload("edge-status/v1", "edge-status", "edge-1", ""), 1)
-	publishMQTTMessage(t, endpointForTest(broker, tlsConfig), tlsConfig, "edge/edge-1/device/device-1/status", ingressPayload("device-status/v1", "device-status", "edge-1", "device-1"), 1)
-	publishMQTTMessage(t, endpointForTest(broker, tlsConfig), tlsConfig, "edge/edge-1/device/device-1/raw", ingressPayload("raw-register-snapshot/v1", "raw", "edge-1", "device-1"), 0)
-	publishMQTTMessage(t, endpointForTest(broker, tlsConfig), tlsConfig, "edge/edge-1/device/device-1/event", ingressPayload("device-event/v1", "event", "edge-1", "device-1"), 1)
+	publishMQTTMessageWithRetain(t, endpointForTest(broker, tlsConfig), tlsConfig, "edge/edge-01/status", readMQTTV1Fixture(t, "edge-status.json"), 1, true)
+	publishMQTTMessageWithRetain(t, endpointForTest(broker, tlsConfig), tlsConfig, "edge/edge-01/device/device-01/status", readMQTTV1Fixture(t, "device-status.json"), 1, true)
+	publishMQTTMessage(t, endpointForTest(broker, tlsConfig), tlsConfig, "edge/edge-01/device/device-01/raw", readMQTTV1Fixture(t, "raw-register-snapshot.json"), 0)
+	publishMQTTMessage(t, endpointForTest(broker, tlsConfig), tlsConfig, "edge/edge-01/device/device-01/event", readMQTTV1Fixture(t, "device-event.json"), 1)
 }
 
 func endpointForTest(broker *mqttBrokerFixture, tlsConfig *tls.Config) mqttEndpoint {
@@ -188,6 +322,10 @@ func endpointForTest(broker *mqttBrokerFixture, tlsConfig *tls.Config) mqttEndpo
 }
 
 func publishMQTTMessage(t *testing.T, endpoint mqttEndpoint, tlsConfig *tls.Config, topic string, payload []byte, qos byte) {
+	publishMQTTMessageWithRetain(t, endpoint, tlsConfig, topic, payload, qos, false)
+}
+
+func publishMQTTMessageWithRetain(t *testing.T, endpoint mqttEndpoint, tlsConfig *tls.Config, topic string, payload []byte, qos byte, retained bool) {
 	t.Helper()
 	scheme := "tcp"
 	if tlsConfig != nil {
@@ -209,25 +347,23 @@ func publishMQTTMessage(t *testing.T, endpoint mqttEndpoint, tlsConfig *tls.Conf
 		t.Fatalf("connect publisher to %s: %v", brokerURL, connect.Error())
 	}
 	t.Cleanup(func() { client.Disconnect(100) })
-	publish := client.Publish(topic, qos, false, payload)
+	publish := client.Publish(topic, qos, retained, payload)
 	if !publish.WaitTimeout(10*time.Second) || publish.Error() != nil {
 		t.Fatalf("publish %s: %v", topic, publish.Error())
 	}
 	client.Disconnect(100)
 }
 
-func ingressPayload(schema, messageID, edgeID, deviceID string) []byte {
-	envelope := map[string]any{
-		"schema":          schema,
-		"messageId":       messageID,
-		"edgeId":          edgeID,
-		"sourceTimestamp": time.Now().UTC().Format(time.RFC3339Nano),
-		"data":            map[string]any{"value": 1},
+func readMQTTV1Fixture(t *testing.T, name string) []byte {
+	t.Helper()
+	_, testFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
 	}
-	if deviceID != "" {
-		envelope["deviceId"] = deviceID
+	payload, err := os.ReadFile(filepath.Join(filepath.Dir(testFile), "..", "testdata", "mqtt-v1", name))
+	if err != nil {
+		t.Fatalf("read MQTT v1 fixture %s: %v", name, err)
 	}
-	payload, _ := json.Marshal(envelope)
 	return payload
 }
 

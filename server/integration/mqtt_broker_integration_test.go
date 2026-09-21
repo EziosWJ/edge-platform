@@ -38,6 +38,7 @@ const (
 // changing the broker configuration used by a test.
 type mqttBrokerOptions struct {
 	requireClientCertificate bool
+	serverCertificateDNSOnly bool
 }
 
 type mqttEndpoint struct {
@@ -104,7 +105,7 @@ func TestMosquittoFixtureSupportsMTLSAndRestart(t *testing.T) {
 func TestMosquittoFixtureQueuesQoS1ForPersistentClient(t *testing.T) {
 	broker := startMQTTBroker(t, mqttBrokerOptions{})
 	clientID := fmt.Sprintf("persistent-fixture-%d", time.Now().UnixNano())
-	topic := "edge/edge-1/device/device-1/event"
+	topic := "edge/edge-01/device/device-01/event"
 	received := make(chan struct{}, 1)
 
 	firstOptions := mqtt311.NewClientOptions().
@@ -124,7 +125,7 @@ func TestMosquittoFixtureQueuesQoS1ForPersistentClient(t *testing.T) {
 	}
 	first.Disconnect(100)
 
-	publishMQTTMessage(t, broker.plaintext, nil, topic, ingressPayload("device-event/v1", "persistent-fixture", "edge-1", "device-1"), 1)
+	publishMQTTMessage(t, broker.plaintext, nil, topic, readMQTTV1Fixture(t, "device-event.json"), 1)
 
 	secondOptions := mqtt311.NewClientOptions().
 		AddBroker(broker.plaintext.URL("mqtt")).
@@ -166,7 +167,7 @@ func startMQTTBroker(t *testing.T, options mqttBrokerOptions) *mqttBrokerFixture
 	}
 	ports := freeTCPPorts(t, 2)
 
-	tlsFiles := createMQTTTLSMaterial(t, configDir)
+	tlsFiles := createMQTTTLSMaterial(t, configDir, !options.serverCertificateDNSOnly)
 	writeMosquittoConfig(t, configDir, options.requireClientCertificate)
 
 	container := fmt.Sprintf("edge-platform-mqtt-%d", time.Now().UnixNano())
@@ -327,11 +328,11 @@ tls_version tlsv1.2
 	}
 }
 
-func createMQTTTLSMaterial(t *testing.T, configDir string) mqttTLSMaterial {
+func createMQTTTLSMaterial(t *testing.T, configDir string, serverCertificateIncludesIP bool) mqttTLSMaterial {
 	t.Helper()
-	caCertificate := createCertificate(t, "mqtt-integration-ca", nil, true, false)
-	serverCertificate := createCertificate(t, "localhost", &caCertificate, false, false)
-	clientCertificate := createCertificate(t, "mqtt-integration-client", &caCertificate, false, true)
+	caCertificate := createCertificate(t, "mqtt-integration-ca", nil, true, false, false)
+	serverCertificate := createCertificate(t, "localhost", &caCertificate, false, false, serverCertificateIncludesIP)
+	clientCertificate := createCertificate(t, "mqtt-integration-client", &caCertificate, false, true, false)
 
 	material := mqttTLSMaterial{
 		caPath:         filepath.Join(configDir, "ca.crt"),
@@ -357,7 +358,7 @@ type generatedCertificate struct {
 	privateKeyPEM  []byte
 }
 
-func createCertificate(t *testing.T, commonName string, issuer *generatedCertificate, isCA, clientAuth bool) generatedCertificate {
+func createCertificate(t *testing.T, commonName string, issuer *generatedCertificate, isCA, clientAuth, includeServerIP bool) generatedCertificate {
 	t.Helper()
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -387,7 +388,9 @@ func createCertificate(t *testing.T, commonName string, issuer *generatedCertifi
 	} else if !isCA {
 		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
 		template.DNSNames = []string{"localhost"}
-		template.IPAddresses = []net.IP{net.ParseIP("127.0.0.1")}
+		if includeServerIP {
+			template.IPAddresses = []net.IP{net.ParseIP("127.0.0.1")}
+		}
 	}
 
 	issuerCertificate := template

@@ -78,12 +78,12 @@ func validTopicID(value string) bool {
 }
 
 type envelope struct {
-	Schema          string          `json:"schema"`
-	MessageID       string          `json:"messageId"`
-	EdgeID          string          `json:"edgeId"`
-	DeviceID        *string         `json:"deviceId"`
-	SourceTimestamp string          `json:"sourceTimestamp"`
-	Data            json.RawMessage `json:"data"`
+	Schema    string          `json:"schema"`
+	MessageID string          `json:"messageId"`
+	EdgeID    string          `json:"edgeId"`
+	DeviceID  *string         `json:"deviceId"`
+	Timestamp string          `json:"timestamp"`
+	Data      json.RawMessage `json:"data"`
 }
 
 type Parser struct {
@@ -116,7 +116,7 @@ func (p *Parser) Parse(topic string, payload []byte, qos byte, retained bool) (I
 	}
 	var raw envelope
 	dec := json.NewDecoder(bytes.NewReader(payload))
-	if err := dec.Decode(&raw); err != nil || raw.Schema == "" || raw.MessageID == "" || raw.EdgeID == "" || raw.SourceTimestamp == "" || len(raw.Data) == 0 || bytes.Equal(raw.Data, []byte("null")) {
+	if err := dec.Decode(&raw); err != nil || raw.Schema == "" || raw.MessageID == "" || raw.EdgeID == "" || raw.Timestamp == "" || len(raw.Data) == 0 || bytes.Equal(raw.Data, []byte("null")) {
 		p.reject("malformed_envelope")
 		return nil, nil, ErrMalformedEnvelope
 	}
@@ -134,7 +134,7 @@ func (p *Parser) Parse(topic string, payload []byte, qos byte, retained bool) (I
 		p.reject("invalid_identity")
 		return nil, nil, ErrMalformedEnvelope
 	}
-	source, err := time.Parse(time.RFC3339Nano, raw.SourceTimestamp)
+	source, err := time.Parse(time.RFC3339Nano, raw.Timestamp)
 	if err != nil {
 		p.reject("invalid_source_timestamp")
 		return nil, nil, ErrMalformedEnvelope
@@ -153,11 +153,11 @@ func (p *Parser) Parse(topic string, payload []byte, qos byte, retained bool) (I
 		metadata.DeviceID = &deviceID
 	}
 	violations := make([]ContractViolation, 0, 2)
-	if qos != 1 {
+	if qos != expectedQoS(t.Kind) {
 		violations = append(violations, ViolationQoS)
 		p.violation(string(ViolationQoS))
 	}
-	if retained {
+	if retained && retainedIsContractViolation(t.Kind) {
 		violations = append(violations, ViolationRetained)
 		p.violation(string(ViolationRetained))
 	}
@@ -173,6 +173,17 @@ func (p *Parser) Parse(topic string, payload []byte, qos byte, retained bool) (I
 	default:
 		return nil, nil, ErrUnknownSchema
 	}
+}
+
+func expectedQoS(kind MessageKind) byte {
+	if kind == KindRawRegisterSnapshot {
+		return 0
+	}
+	return 1
+}
+
+func retainedIsContractViolation(kind MessageKind) bool {
+	return kind == KindRawRegisterSnapshot || kind == KindDeviceEvent
 }
 
 func ParseTopicFromConfiguredParser(p *Parser, topic string) (Topic, error) {
