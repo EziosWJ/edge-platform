@@ -143,7 +143,15 @@ func TestMQTTRuntimeTLSFailurePaths(t *testing.T) {
 	t.Run("wrong-ca-keeps-runtime-unready", func(t *testing.T) {
 		broker := startMQTTBroker(t, mqttBrokerOptions{})
 		cfg := runtimeConfig(t, broker, mqtt.ProtocolMQTT5, true, false)
-		cfg.TLS.CACertFile = broker.tlsFiles.serverCertPath
+		// Do not use the broker's server leaf as the wrong CA. Go's TLS
+		// verifier accepts an explicitly configured certificate as a trust
+		// anchor, even when it is not marked as a CA, which would make this
+		// failure-path test pass for the wrong reason. Generate a separate CA
+		// with an unrelated key and certificate instead.
+		wrongCA := createCertificate(t, "mqtt-integration-wrong-ca", nil, true, false, false)
+		wrongCAPath := filepath.Join(t.TempDir(), "wrong-ca.crt")
+		writeCertificateFile(t, wrongCAPath, wrongCA.certificatePEM)
+		cfg.TLS.CACertFile = wrongCAPath
 		runtime, err := mqtt.NewRuntime(cfg, mqtt.ConsumerFunc(func(context.Context, mqtt.IngressMessage) mqtt.DeliveryOutcome {
 			return mqtt.OutcomeAccepted
 		}), nil, mqtt.NewMetrics(nil), nil)
