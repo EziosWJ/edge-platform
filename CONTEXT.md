@@ -116,7 +116,41 @@ _Avoid_：offlineAt、lastOnlineAt
 **Discovered Edge**：通过 EdgeStatus 自动登记且持续保留的 Edge。M2 不为 Edge 引入删除、归档或禁用状态；offline 只表示最近的 EdgeStatus 断言，不表示记录失效。
 _Avoid_：provisioned Edge、temporary Edge
 
-**Device**：由某个 Edge 管理的现场设备。Cloud 不直接理解 Modbus 地址、串口参数、Unit ID 等 Edge 内部采集细节。
+**Device**：Cloud 中可被 DataPoint、Command 和 HMI 稳定引用的现场设备。Device 拥有独立于来源 Edge 的 Cloud 全局身份；Cloud 不直接理解 Modbus 地址、串口参数、Unit ID 等 Edge 内部采集细节。
+_Avoid_：Collector device、`(edgeId, deviceId)` 复合身份
+
+**Cloud Device ID**：Cloud 为 Device 分配的全局唯一且稳定的不透明 UUID，对外字段名为 `deviceId`。Device 后续即使发生显式迁移，上层绑定也继续引用这个身份，调用方不得解释其生成顺序或内部结构。
+_Avoid_：sourceDeviceId、MQTT deviceId、数据库自增 ID
+
+**Source Device ID**：Edge Collector 在自身范围内分配并作为 MQTT Topic/envelope `deviceId` 上报的设备身份，对外字段名为 `sourceDeviceId`。它只在所属 Edge 内唯一，不能单独作为 Cloud Device 或 HMI 的身份。
+_Avoid_：Cloud Device ID、全局 deviceId
+
+**Device Registration**：Cloud 第一次为已登记 Edge 接受领域有效的 DeviceStatus 时认识并登记一个 Device。DeviceStatus 不会创建 Edge，自动发现也不会把不同来源身份猜测为同一 Device。
+_Avoid_：Device provisioning、Edge Registration
+
+**Discovered Device**：通过 DeviceStatus 自动登记的 Device。在出现明确的设备生命周期契约前，来源变更、删除或改名不会自动删除、迁移或合并既有 Device。
+_Avoid_：temporary Device、provisioned Device
+
+**DeviceStatus**：Edge Collector 对某个 Device 当前采集通信状态及诊断事实的上行断言。它不表达所属 Edge 的 MQTT 会话状态。
+_Avoid_：EdgeStatus、DeviceEvent、raw snapshot
+
+**Domain-valid DeviceStatus**：Topic/envelope 来源身份合法，`data` 完整包含四态 `status`、可空的 `lastAttemptAt` 与 `lastSuccessAt` 来源时间以及可空的 `error` 字符串，且各字段类型和格式符合 DeviceStatus 契约的断言。未知扩展字段不改变有效性，领域有效性也不由 raw 或 DeviceEvent 补足。
+_Avoid_：raw communication status、inferred Device status
+
+**Device Initial / Online / Degraded / Offline**：Collector 断言的四态采集通信状态：尚未形成可确认通信结果、最近完整采集成功、最近采集部分成功或尚未达到离线阈值、连续全失败达到离线阈值。Cloud 投影该断言，不自行计算阈值，也不因 Edge Offline 覆盖它。
+_Avoid_：Edge online/offline、reachable、Cloud-computed status
+
+**Device RegisteredAt**：Cloud 第一次完成 Device Registration 时的 ReceivedAt，在 Device 生命周期内保持不变。
+_Avoid_：SourceTimestamp、lastAttemptAt、createdAt（当它被用来表示来源时间时）
+
+**Device LastSeenAt**：Cloud 最近收到并接受该 Device 的领域有效 DeviceStatus 的 ReceivedAt；retained 和重复投递同样属于新的 Cloud 观察。
+_Avoid_：SourceTimestamp、lastAttemptAt、lastSuccessAt
+
+**LastAttemptAt / LastSuccessAt**：Collector 分别记录最近一次采集通信尝试和最近一次成功的来源时间。它们保留来源侧语义，不代表 Cloud 接收时间。
+_Avoid_：Device LastSeenAt、SourceTimestamp
+
+**Communication Error**：DeviceStatus 携带的当前 Collector 诊断文本；它解释最近通信状态，但不是稳定错误码或历史事件。
+_Avoid_：DeviceEvent、Alarm、error code
 
 **DataPoint**：Cloud 对设备数据的语义化数据点，例如 `current_a`、`temperature`、`breaker_status`。HMI、历史、告警等上层能力绑定 DataPoint，而不是直接绑定 MQTT Topic 或原始寄存器地址。
 
