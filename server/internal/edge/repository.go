@@ -13,10 +13,11 @@ var _ Store = (*Repository)(nil)
 
 func NewRepository(db *gorm.DB) *Repository { return &Repository{db: db} }
 
-// Observe is one database statement. The conflict path applies the incoming
-// observation only when it is not strictly older than the current Cloud
-// observation. Equal ReceivedAt values therefore follow database statement
-// order, while an older observation is a complete no-op.
+// Observe is one database statement. Current status/lastSeenAt only move
+// forward by Cloud ReceivedAt. registeredAt independently keeps the earliest
+// Cloud observation so concurrent first-discovery statements cannot make
+// registration time depend on database execution order. Equal ReceivedAt
+// values follow database statement order for the current status projection.
 func (r *Repository) Observe(ctx context.Context, observation Observation) (Edge, error) {
 	var result Edge
 	err := r.db.WithContext(ctx).Raw(`
@@ -24,7 +25,7 @@ INSERT INTO edge (edge_id, status, registered_at, last_seen_at)
 VALUES (?, ?, ?, ?)
 ON CONFLICT (edge_id) DO UPDATE SET
     status = CASE WHEN edge.last_seen_at > excluded.last_seen_at THEN edge.status ELSE excluded.status END,
-    registered_at = edge.registered_at,
+    registered_at = CASE WHEN edge.registered_at <= excluded.registered_at THEN edge.registered_at ELSE excluded.registered_at END,
     last_seen_at = CASE WHEN edge.last_seen_at > excluded.last_seen_at THEN edge.last_seen_at ELSE excluded.last_seen_at END
 RETURNING edge_id, status, registered_at, last_seen_at`,
 		observation.EdgeID, observation.Status, observation.ReceivedAt, observation.ReceivedAt,
