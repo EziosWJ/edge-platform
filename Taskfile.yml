@@ -67,13 +67,22 @@ tasks:
     desc: Run PostgreSQL integration tests
     dir: server
     cmds:
-      - go test -tags=integration ./integration -run 'Postgres|Auth|RBAC|SysConfig|Department|Dictionary|Login|File|Notification|UserPage' -count=1
+      - go test -tags=integration ./integration -run 'Edge|Postgres|Auth|RBAC|SysConfig|Department|Dictionary|Login|File|Notification|UserPage' -count=1
 
   backend:mqtt-integration:
     desc: Run Mosquitto MQTT integration tests
     dir: server
     cmds:
       - go test -tags=integration ./integration -run '^(TestMosquittoFixture|TestMQTTRuntime)' -count=1 -timeout=10m
+
+  m2:edge-acceptance:
+    desc: Run the real PostgreSQL, Mosquitto, Cloud, and Edge Collector M2 acceptance
+    dir: '{{.ROOT_DIR}}'
+    preconditions:
+      - sh: test -f scripts/m2-edge-acceptance.mjs
+        msg: scripts/m2-edge-acceptance.mjs is not present; GitHub #19 has not been implemented yet
+    cmds:
+      - node scripts/m2-edge-acceptance.mjs
 
   frontend:lint:
     desc: Run web lint
