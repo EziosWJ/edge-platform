@@ -108,6 +108,8 @@ Acceptance：
 
 目标：把 CurrentValue 实时推送给浏览器。
 
+设计决策见 [ADR-0014: Realtime CurrentValue delivery 与 WebSocket 语义](adr/0014-realtime-currentvalue-delivery-and-websocket-semantics.md)。
+
 In Scope：
 - WebSocket lifecycle
 - subscription model
@@ -127,6 +129,8 @@ Acceptance：
 ## M6 — Command Loop
 
 目标：完成 Cloud -> Edge -> Cloud 的控制闭环。
+
+设计决策见 [ADR-0015: Cloud Command identity、durable delivery 与 result 语义](adr/0015-cloud-command-identity-durable-delivery-and-result-semantics.md)。
 
 In Scope：
 - Command API
