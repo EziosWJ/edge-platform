@@ -93,6 +93,19 @@ tasks:
     cmds:
       - node scripts/m3-device-acceptance.mjs
 
+  m4:datapoint-acceptance:
+    desc: Run the real Collector -> raw snapshot -> DataPoint CurrentValue acceptance
+    dir: '{{.ROOT_DIR}}'
+    preconditions:
+      - sh: test -f scripts/m4-datapoint-acceptance.mjs
+        msg: scripts/m4-datapoint-acceptance.mjs is missing
+      - sh: test -n "$M4_DEVICE_ID"
+        msg: M4_DEVICE_ID must identify a Device discovered by the real M3 Collector setup
+      - sh: test -n "$M4_CLOUD_URL"
+        msg: M4_CLOUD_URL must point at the running Cloud Server
+    cmds:
+      - node scripts/m4-datapoint-acceptance.mjs
+
   frontend:lint:
     desc: Run web lint
     dir: web
