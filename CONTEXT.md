@@ -179,7 +179,29 @@ _Avoid_：通用 Cloud outbox、把 PUBACK 当设备执行确认
 **Command Result**：Edge Collector 对既有 Command 的执行事实，包括 ACCEPTED/REJECTED/EXPIRED/SUCCEEDED/FAILED 及来源时间、result/error。Cloud 必须校验 commandId、冻结 route 和 name；FINAL 可以先于 ACCEPTED 到达，终态采用 first-terminal-wins。
 _Avoid_：Cloud timeout 推导出的执行结果
 
-**HMI**：基于 DataPoint 和 Command 的组态展示/控制页面。编辑器计划使用 AntV X6；持久化使用自定义 HMI schema，不把 X6 JSON 直接当作不可替换的领域模型。
+**HMI**：基于 DataPoint、M5 Realtime 与 M6 Command 的组态展示/控制页面。M8 的硬依赖是 M4/M5/M6，不依赖 M7 History & Event；编辑器使用 AntV X6，但持久化使用自定义 versioned canonical schema，不把 X6 JSON 当领域模型。
+_Avoid_：browser MQTT、register-bound HMI、X6 JSON 作为持久化 contract
+
+**HMI Page**：Cloud 中可编辑和发布的 HMI 页面身份，以稳定 `pageId` 表示。Page 持有可变 Draft 与当前 `publishedVersionId`；Runtime 永远只加载 Published version，Draft 修改不会直接影响运行画面。
+_Avoid_：把 Draft 直接作为生产 Runtime 页面
+
+**HMI Page Version**：由一次 Publish 从已保存 Draft 生成的 immutable 页面快照，记录 versionNo 与 sourceDraftRevision。相同 sourceDraftRevision 的重复 Publish 必须返回同一版本而不是制造新版本。
+_Avoid_：mutable published document、X6 history
+
+**HMI Document**：显式版本化的 Cloud canonical 页面文档，例如 `hmi-page/v1`，只保存 canvas、node geometry、typed props 与 bindings。X6 viewport、selection、plugin state、undo/redo 等编辑器临时状态不得进入该文档。
+_Avoid_：`graph.toJSON()` 直接存库
+
+**HMI Component Registry**：M8 受控、强类型的组件注册表，定义允许的 component type、props、binding slot 与 shared editor/runtime renderer。M8 不允许用户注入 React、HTML、JavaScript、Starlark、任意 CSS 或通用 expression。
+_Avoid_：custom code component、expression engine
+
+**HMI DataPoint Binding**：HMI 对实时语义点的稳定绑定，canonical identity 为 `deviceId + pointKey`。Publish 校验 DataPoint 存在且 valueType 与组件 slot 兼容；Runtime 通过 M5 shared realtime store 消费 CurrentValue，不依赖 SourceMapping。
+_Avoid_：dataPoint source mapping、MQTT topic、sourceDeviceId、register address
+
+**HMI Command Binding**：HMI 对 M6 Command API 的声明式控制绑定，由 Cloud `deviceId`、command name、静态 JSON object args、TTL 与可选确认提示组成。一次明确 operator action 创建一个新 commandId；HMI binding 本身不授予 `command:execute` 权限。
+_Avoid_：自动命令、动态表达式 args、CommandDefinition shadow model
+
+**HMI Runtime**：只加载 Published HMI Page Version 的运行态。Runtime 从 bootstrap 获取页面与当前 DataPoint metadata，用一个 M5 WebSocket 对页面内去重后的 `deviceId + pointKey` 批量订阅；Command 继续走 M6 REST。Runtime 不持久化 CurrentValue、WebSocket state 或 Command pending state。
+_Avoid_：运行 draft、每组件独立 WebSocket、HMI 自建 realtime/command store
 
 **MQTT Ingest**：Cloud 接收并解析 Edge Collector MQTT v1 上行消息的接入能力。它产出带接收元数据的强类型接入消息，但不代表 Edge、Device、DataPoint 或 Event 已完成领域建模或持久化。
 _Avoid_：MQTT 业务模型、MQTT 领域模型
@@ -244,7 +266,7 @@ SQLite 现有实现保留的目的仅是脚手架兼容、本地开发或快速�
 
 ## 当前实施顺序
 
-当前只完成 Cloud 工程基线迁移和架构重定向。后续优先顺序：
+实施依赖顺序：
 
 ```text
 MQTT ingest
@@ -254,8 +276,10 @@ MQTT ingest
 → CurrentValue
 → WebSocket
 → Command 闭环
-→ History/Event
-→ HMI editor/runtime
+     ├─→ History/Event
+     └─→ HMI editor/runtime
 ```
+
+History/Event 与 HMI 在 Command 闭环之后没有相互硬依赖，可以并行或按产品优先级独立推进。前瞻性 grill / ADR / spec 可以提前完成，但不得把未满足依赖的阶段提前进入 implementation。
 
 架构决策见 `docs/adr/0001-cloud-platform-scope-and-edge-cloud-boundary.md`。
