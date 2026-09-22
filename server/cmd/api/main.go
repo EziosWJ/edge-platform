@@ -25,6 +25,7 @@ import (
 	"github.com/EziosWJ/edge-platform/server/internal/notification"
 	platformdatabase "github.com/EziosWJ/edge-platform/server/internal/platform/database"
 	"github.com/EziosWJ/edge-platform/server/internal/rbac"
+	"github.com/EziosWJ/edge-platform/server/internal/realtime"
 	"github.com/EziosWJ/edge-platform/server/internal/sysconfig"
 	"github.com/EziosWJ/edge-platform/server/internal/usermgmt"
 )
@@ -115,7 +116,8 @@ func main() {
 		slog.Error("build Device service", "error", err)
 		os.Exit(1)
 	}
-	datapointService, err := datapoint.NewService(datapoint.NewRepository(database.GORM))
+	realtimeHub := realtime.NewHub(0)
+	datapointService, err := datapoint.NewService(datapoint.NewRepository(database.GORM, realtimeHub))
 	if err != nil {
 		slog.Error("build DataPoint service", "error", err)
 		os.Exit(1)
@@ -134,6 +136,7 @@ func main() {
 		Edge:         edgeService,
 		Device:       deviceService,
 		DataPoint:    datapointService,
+		RealtimeHub:  realtimeHub,
 	})
 	if err != nil {
 		slog.Error("build application", "error", err)

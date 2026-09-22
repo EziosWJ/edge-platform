@@ -12,12 +12,14 @@ import (
 	"github.com/EziosWJ/edge-platform/server/internal/audit"
 	"github.com/EziosWJ/edge-platform/server/internal/auth"
 	"github.com/EziosWJ/edge-platform/server/internal/config"
+	"github.com/EziosWJ/edge-platform/server/internal/datapoint"
 	"github.com/EziosWJ/edge-platform/server/internal/dept"
 	"github.com/EziosWJ/edge-platform/server/internal/dictionary"
 	"github.com/EziosWJ/edge-platform/server/internal/filemgmt"
 	"github.com/EziosWJ/edge-platform/server/internal/logmgmt"
 	platformhttp "github.com/EziosWJ/edge-platform/server/internal/platform/http"
 	"github.com/EziosWJ/edge-platform/server/internal/rbac"
+	"github.com/EziosWJ/edge-platform/server/internal/realtime"
 	"github.com/EziosWJ/edge-platform/server/internal/sysconfig"
 	"github.com/EziosWJ/edge-platform/server/internal/usermgmt"
 )
@@ -138,6 +140,37 @@ func TestBuildRegistersSystemRoutes(t *testing.T) {
 		if response.Code != http.StatusOK {
 			t.Errorf("GET %s status = %d, want %d", path, response.Code, http.StatusOK)
 		}
+	}
+}
+
+func TestNewUsesInjectedRealtimeHubForDataPointService(t *testing.T) {
+	dataPointService, err := datapoint.NewService(datapointConsumerStore{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hub := realtime.NewHub(4)
+	deps := newFakeStores().deps()
+	deps.DataPoint = dataPointService
+	deps.RealtimeHub = hub
+	application, err := New(testConfig("test", false), readyProbe{}, deps)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	defer application.StopRuntime(context.Background())
+	if application.realtime == nil || application.realtime.Hub() != hub {
+		t.Fatalf("application realtime hub = %p, want injected hub %p", application.realtime.Hub(), hub)
+	}
+}
+
+func TestNewRejectsDataPointWithoutRealtimeHub(t *testing.T) {
+	dataPointService, err := datapoint.NewService(datapointConsumerStore{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deps := newFakeStores().deps()
+	deps.DataPoint = dataPointService
+	if _, err := New(testConfig("test", false), readyProbe{}, deps); err == nil {
+		t.Fatal("New() accepted DataPoint service without realtime hub")
 	}
 }
 

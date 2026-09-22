@@ -22,6 +22,7 @@ import (
 	"github.com/EziosWJ/edge-platform/server/internal/notification"
 	platformhttp "github.com/EziosWJ/edge-platform/server/internal/platform/http"
 	"github.com/EziosWJ/edge-platform/server/internal/rbac"
+	"github.com/EziosWJ/edge-platform/server/internal/realtime"
 	"github.com/EziosWJ/edge-platform/server/internal/sysconfig"
 	"github.com/EziosWJ/edge-platform/server/internal/usermgmt"
 )
@@ -42,15 +43,17 @@ type Dependencies struct {
 	Edge         *edge.Service
 	Device       *device.Service
 	DataPoint    *datapoint.Service
+	RealtimeHub  *realtime.Hub
 	MQTT         platformhttp.MQTTRuntime
 }
 
 // Application is the assembled HTTP application and its process logger.
 type Application struct {
-	Router *gin.Engine
-	Logger *slog.Logger
-	mqtt   platformhttp.MQTTRuntime
-	replay *deviceStatusReplayCoordinator
+	Router   *gin.Engine
+	Logger   *slog.Logger
+	mqtt     platformhttp.MQTTRuntime
+	replay   *deviceStatusReplayCoordinator
+	realtime *realtime.Service
 }
 
 // New assembles the HTTP router. Database readiness is supplied by the caller
@@ -58,6 +61,9 @@ type Application struct {
 func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Dependencies) (*Application, error) {
 	if err := deps.validate(); err != nil {
 		return nil, err
+	}
+	if deps.DataPoint != nil && deps.RealtimeHub == nil {
+		return nil, errors.New("realtime hub is required when DataPoint service is configured")
 	}
 
 	logger, err := newLogger(cfg)
@@ -192,11 +198,26 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 		datapoint.RegisterRoutes(points, datapointHandler)
 	}
 
+	var realtimeService *realtime.Service
+	if deps.DataPoint != nil {
+		realtimeService, err = realtime.NewService(deps.Auth, realtime.NewDataPointReader(deps.DataPoint), realtime.Config{
+			AllowedOrigins: cfg.CORS.AllowedOrigins,
+		}, deps.RealtimeHub)
+		if err != nil {
+			return nil, fmt.Errorf("create realtime service: %w", err)
+		}
+		realtimeHandler, err := realtime.NewHandler(realtimeService)
+		if err != nil {
+			return nil, fmt.Errorf("create realtime handler: %w", err)
+		}
+		realtime.RegisterRoutes(router, realtimeHandler, deps.Auth)
+	}
+
 	if cfg.Environment == config.EnvironmentDev && cfg.Swagger.Enabled {
 		registerSwaggerUI(router)
 	}
 
-	return &Application{Router: router, Logger: logger, mqtt: mqttRuntime, replay: replay}, nil
+	return &Application{Router: router, Logger: logger, mqtt: mqttRuntime, replay: replay, realtime: realtimeService}, nil
 }
 
 // StartRuntime starts process-local runtimes before the HTTP server accepts
@@ -213,16 +234,31 @@ func (a *Application) StartRuntime(ctx context.Context) error {
 // StopRuntime stops MQTT before HTTP and database shutdown. The caller owns
 // the timeout because MQTT and HTTP have separate shutdown budgets.
 func (a *Application) StopRuntime(ctx context.Context) error {
-	if a == nil || a.mqtt == nil {
+	if a == nil {
 		return nil
+	}
+	var firstErr error
+	if a.realtime != nil {
+		if err := a.realtime.Close(ctx); err != nil {
+			firstErr = err
+		}
+	}
+	if a.mqtt == nil {
+		return firstErr
 	}
 	if a.replay != nil {
 		if err := a.replay.Stop(ctx); err != nil {
 			_ = a.mqtt.Stop(ctx)
-			return err
+			if firstErr == nil {
+				firstErr = err
+			}
+			return firstErr
 		}
 	}
-	return a.mqtt.Stop(ctx)
+	if err := a.mqtt.Stop(ctx); err != nil && firstErr == nil {
+		firstErr = err
+	}
+	return firstErr
 }
 
 type combinedReadiness struct {

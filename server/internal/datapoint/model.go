@@ -51,11 +51,12 @@ const (
 )
 
 var (
-	ErrNotFound      = errors.New("数据不存在")
-	ErrInvalid       = errors.New("参数错误")
-	ErrConflict      = errors.New("数据已存在")
-	ErrImmutable     = errors.New("pointKey 和 valueType 创建后不可修改")
-	ErrUnknownDevice = errors.New("来源 Device 不存在")
+	ErrNotFound       = errors.New("数据不存在")
+	ErrInvalid        = errors.New("参数错误")
+	ErrConflict       = errors.New("数据已存在")
+	ErrImmutable      = errors.New("pointKey 和 valueType 创建后不可修改")
+	ErrUnknownDevice  = errors.New("来源 Device 不存在")
+	ErrInvalidBinding = errors.New("数据点绑定无效")
 )
 
 var pointKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
@@ -104,6 +105,20 @@ type CurrentValue struct {
 }
 
 func (CurrentValue) TableName() string { return "current_value" }
+
+// CurrentPoint is the semantic read model used by realtime consumers. It
+// intentionally has no SourceMapping field.
+type CurrentPoint struct {
+	DataPointID     string
+	DeviceID        string
+	PointKey        string
+	ValueType       ValueType
+	Value           any
+	Quality         Quality
+	SourceTimestamp *time.Time
+	ObservedAt      *time.Time
+	Revision        int64
+}
 
 func (c CurrentValue) Value() any {
 	if c.ValueType == ValueTypeNumber && c.NumberValue != nil {

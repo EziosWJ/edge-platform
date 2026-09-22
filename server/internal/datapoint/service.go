@@ -9,6 +9,10 @@ import (
 
 type Service struct{ store Store }
 
+type currentPointStore interface {
+	CurrentByIdentity(context.Context, string, string) (CurrentPoint, error)
+}
+
 func NewService(store Store) (*Service, error) {
 	if store == nil {
 		return nil, ErrInvalid
@@ -41,6 +45,17 @@ func (s *Service) Detail(ctx context.Context, id string) (DataPoint, error) {
 		return DataPoint{}, ErrInvalid
 	}
 	return s.store.Detail(ctx, id)
+}
+
+func (s *Service) CurrentByIdentity(ctx context.Context, deviceID, pointKey string) (CurrentPoint, error) {
+	if strings.TrimSpace(deviceID) == "" || strings.TrimSpace(deviceID) != deviceID || !ValidatePointKey(pointKey) {
+		return CurrentPoint{}, ErrInvalid
+	}
+	store, ok := s.store.(currentPointStore)
+	if !ok {
+		return CurrentPoint{}, ErrInvalidBinding
+	}
+	return store.CurrentByIdentity(ctx, deviceID, pointKey)
 }
 
 func (s *Service) Update(ctx context.Context, metadata audit.Metadata, id string, input UpdateInput) (DataPoint, error) {

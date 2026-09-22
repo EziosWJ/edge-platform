@@ -104,14 +104,31 @@ func (s *Service) Authenticate(ctx context.Context, tokenValue string) (Principa
 	if err != nil {
 		return Principal{}, ErrUnauthenticated
 	}
-	active, err := s.store.IsSessionActive(ctx, principal.UserID, principal.JTI, s.now().UTC())
-	if err != nil {
-		return Principal{}, fmt.Errorf("check authentication session: %w", err)
-	}
-	if !active {
-		return Principal{}, ErrUnauthenticated
+	if err := s.ValidateSession(ctx, principal); err != nil {
+		return Principal{}, err
 	}
 	return principal, nil
+}
+
+// ValidateSession re-checks the server-side session state for a principal
+// that was authenticated earlier. It is deliberately independent of JWT
+// parsing so long-lived connections can observe revoke and expiry semantics.
+func (s *Service) ValidateSession(ctx context.Context, principal Principal) error {
+	if principal.UserID <= 0 || principal.JTI == "" {
+		return ErrUnauthenticated
+	}
+	now := s.now().UTC()
+	if principal.ExpiresAt.IsZero() || !principal.ExpiresAt.After(now) {
+		return ErrUnauthenticated
+	}
+	active, err := s.store.IsSessionActive(ctx, principal.UserID, principal.JTI, now)
+	if err != nil {
+		return fmt.Errorf("check authentication session: %w", err)
+	}
+	if !active {
+		return ErrUnauthenticated
+	}
+	return nil
 }
 
 func (s *Service) Logout(ctx context.Context, principal Principal) error {

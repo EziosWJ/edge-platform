@@ -136,6 +136,12 @@ type Authenticator interface {
 	Authenticate(context.Context, string) (Principal, error)
 }
 
+// SessionValidator is the small seam used by long-lived transports to
+// re-check an already authenticated session without parsing a JWT again.
+type SessionValidator interface {
+	ValidateSession(context.Context, Principal) error
+}
+
 // Store is the authentication persistence boundary. Its small interface is a
 // real cross-layer boundary: Service has no GORM dependency and can be tested
 // without a database.

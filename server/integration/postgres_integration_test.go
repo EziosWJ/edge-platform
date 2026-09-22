@@ -32,6 +32,7 @@ import (
 	"github.com/EziosWJ/edge-platform/server/internal/notification"
 	platformdatabase "github.com/EziosWJ/edge-platform/server/internal/platform/database"
 	"github.com/EziosWJ/edge-platform/server/internal/rbac"
+	"github.com/EziosWJ/edge-platform/server/internal/realtime"
 	"github.com/EziosWJ/edge-platform/server/internal/sysconfig"
 	"github.com/EziosWJ/edge-platform/server/internal/usermgmt"
 )
@@ -967,7 +968,8 @@ func testDependencies(t *testing.T, database *platformdatabase.Database, storage
 	if err != nil {
 		t.Fatalf("create log service: %v", err)
 	}
-	datapointService, err := datapoint.NewService(datapoint.NewRepository(database.GORM))
+	realtimeHub := realtime.NewHub(0)
+	datapointService, err := datapoint.NewService(datapoint.NewRepository(database.GORM, realtimeHub))
 	if err != nil {
 		t.Fatalf("create DataPoint service: %v", err)
 	}
@@ -981,6 +983,7 @@ func testDependencies(t *testing.T, database *platformdatabase.Database, storage
 		File:         fileService,
 		Log:          logService,
 		DataPoint:    datapointService,
+		RealtimeHub:  realtimeHub,
 		Notification: mustNotificationService(t, notificationRepository),
 	}
 }
