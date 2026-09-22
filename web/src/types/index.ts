@@ -152,3 +152,9 @@ export type {
   RealtimeSubscribeMessage,
   RealtimeTicketResponse,
 } from "./realtime";
+export type {
+  CommandPageQuery,
+  CommandRecord,
+  CommandStatus,
+  CreateCommandRequest,
+} from "./command";

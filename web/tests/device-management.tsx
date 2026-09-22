@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { MemoryRouter } from "react-router-dom";
 import { DevicePage } from "@/pages/device";
 import "@/styles/globals.css";
 
@@ -99,4 +100,8 @@ window.fetch = async (input) => {
   );
 };
 
-createRoot(document.getElementById("root")!).render(<DevicePage />);
+createRoot(document.getElementById("root")!).render(
+  <MemoryRouter>
+    <DevicePage />
+  </MemoryRouter>,
+);

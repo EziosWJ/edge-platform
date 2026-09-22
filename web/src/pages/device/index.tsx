@@ -1,4 +1,4 @@
-import { Eye, RefreshCw, RotateCcw, Search } from "lucide-react";
+import { Eye, RefreshCw, RotateCcw, Search, Terminal } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getDevicePage } from "@/api/device";
@@ -16,12 +16,17 @@ import { Select } from "@/components/ui/select";
 import { useListPage } from "@/hooks/use-list-page";
 import { getErrorMessage } from "@/lib/api-error";
 import { formatDateTime } from "@/lib/datetime";
+import { hasPermission } from "@/lib/permission";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 import type {
   DataTableColumn,
   DeviceCommunicationStatus,
   DevicePageQuery,
   DeviceRecord,
 } from "@/types";
+import type { CommandRecord } from "@/types/command";
+import { CommandDetailDialog } from "../command/command-detail-dialog";
+import { CommandFormDialog } from "../command/command-form-dialog";
 import { DeviceDetailDialog } from "./device-detail-dialog";
 
 type FilterState = {
@@ -94,6 +99,9 @@ export function DevicePage() {
     },
   });
   const [detailDeviceId, setDetailDeviceId] = useState<string | null>(null);
+  const [commandDevice, setCommandDevice] = useState<DeviceRecord | null>(null);
+  const [commandDetailId, setCommandDetailId] = useState<string | null>(null);
+  const canViewCommandDetail = hasPermission("command:detail");
 
   const openDetail = useCallback((record: DeviceRecord) => {
     setDetailDeviceId(record.deviceId);
@@ -160,13 +168,18 @@ export function DevicePage() {
       {
         title: "操作",
         key: "actions",
-        width: 100,
+        width: 220,
         align: "center",
         nowrap: true,
         render: (_, record) => (
           <div className="flex gap-1">
             <Button size="sm" variant="ghost" aria-label={`查看 ${record.deviceId} 详情`} onClick={() => openDetail(record)}><Eye className="h-4 w-4" aria-hidden />详情</Button>
             <Button size="sm" variant="ghost" onClick={() => navigate(`/datapoint?deviceId=${encodeURIComponent(record.deviceId)}`)}>数据点</Button>
+            <PermissionGuard permissionCode="command:execute">
+              <Button size="sm" variant="ghost" onClick={() => setCommandDevice(record)}>
+                <Terminal className="h-4 w-4" aria-hidden />执行命令
+              </Button>
+            </PermissionGuard>
           </div>
         ),
       },
@@ -287,6 +300,21 @@ export function DevicePage() {
         open={detailDeviceId !== null}
         deviceId={detailDeviceId}
         onCancel={() => setDetailDeviceId(null)}
+      />
+      <CommandFormDialog
+        open={commandDevice !== null}
+        deviceId={commandDevice?.deviceId ?? null}
+        communicationStatus={commandDevice?.communicationStatus}
+        onCancel={() => setCommandDevice(null)}
+        onCreated={(created: CommandRecord) => {
+          setCommandDevice(null);
+          if (canViewCommandDetail) setCommandDetailId(created.commandId);
+        }}
+      />
+      <CommandDetailDialog
+        open={commandDetailId !== null}
+        commandId={commandDetailId}
+        onCancel={() => setCommandDetailId(null)}
       />
     </>
   );
