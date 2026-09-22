@@ -5,8 +5,9 @@
 原则：
 
 - 一个 Milestone 对应一个可独立验收的能力阶段。
-- 当前 Milestone 未验收关闭前，不扩展到下一阶段。
-- Matt skills 可以在当前 Milestone 内生成 spec / tickets，但不得扩大 Milestone Scope。
+- 当前 Milestone 未验收关闭前，不启动依赖它的下一阶段实现。
+- 可以对后续阶段提前进行前瞻性 grill / ADR / spec，以发现上游模型缺口；这不代表实施授权，也不得提前实现未满足依赖的阶段。
+- Matt skills 可以在当前实施 Milestone 内生成 implementation tickets，但不得扩大 Milestone Scope。
 - 每个阶段生成的 Issue 必须关联到对应 GitHub Milestone。
 - Milestone 100% Issue Closed 不代表自动验收通过；必须完成阶段 Acceptance 后再关闭 Milestone。
 
@@ -153,6 +154,8 @@ Acceptance：
 
 目标：形成基础历史数据和事件查询能力。
 
+M7 在 M6 之后可以与 M8 独立推进；M8 不依赖 M7。
+
 In Scope：
 - point history persistence
 - event persistence
@@ -172,28 +175,42 @@ Acceptance：
 
 ## M8 — HMI MVP
 
-目标：基于已稳定的 DataPoint / Command 实现第一版组态编辑与运行。
+目标：基于已稳定的 DataPoint / Realtime / Command 实现第一版组态编辑与运行。
+
+设计决策见 [ADR-0016: HMI Page lifecycle、binding 与 Runtime 语义](adr/0016-hmi-page-lifecycle-bindings-and-runtime-semantics.md)。
+
+M8 的硬依赖是 M4、M5、M6；不依赖 M7 History & Event。M6 验收关闭后，M7 与 M8 可以并行或按产品优先级独立实施。
 
 In Scope：
-- AntV X6 editor
-- component palette
-- page schema
+- AntV X6 editor adapter
+- custom versioned HMI page schema
+- Draft / Published separation
+- typed component registry
 - DataPoint binding
+- M5 realtime runtime
 - Command binding
+- M6 control integration
 - edit/runtime separation
 - basic industrial components
 
 Out of Scope：
+- history trend / event panel
 - advanced SCADA scripting
+- expression / rule engine
 - complex animation engine
+- automatic command / workflow
+- custom HTML/React/JavaScript
 - multi-user collaborative editing
+- per-page ACL / anonymous runtime
 
 Acceptance：
-- 可创建并保存 HMI 页面
-- 可拖入组件并绑定真实 DataPoint
-- 运行态实时显示数据
-- 控件可绑定真实 Command
-- HMI 不直接依赖 MQTT Topic / Modbus register
+- 可创建、保存 Draft 并发布 immutable HMI 页面版本
+- Draft 修改不会直接影响 Published Runtime
+- 可拖入受控组件并绑定真实 DataPoint
+- 运行态通过 M5 实时显示真实 CurrentValue，并正确展示 GOOD/BAD/NO_DATA
+- button/switch 可通过 M6 发起真实 Command，且不 optimistic 修改现场状态
+- HMI 不直接依赖 MQTT Topic / Modbus register / SourceMapping
+- M7 未实现时 M8 完整 acceptance 仍可通过
 
 ## Recommended execution order
 
@@ -204,6 +221,8 @@ M1 MQTT Ingest
 → M4 DataPoint & CurrentValue
 → M5 WebSocket
 → M6 Command
-→ M7 History & Event
-→ M8 HMI MVP
+     ├─→ M7 History & Event
+     └─→ M8 HMI MVP
 ```
+
+M7 / M8 在 M6 后无相互硬依赖；可并行，也可根据产品优先级选择 `M6 -> M8 -> M7` 或 `M6 -> M7 -> M8`。
