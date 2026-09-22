@@ -11,7 +11,8 @@
     "test:layout": "node tests/operation-column-layout.mjs",
     "test:route-loading": "node tests/route-loading.mjs",
     "test:edge-management": "node tests/edge-management.mjs",
-    "test:device-management": "node tests/device-management.mjs"
+    "test:device-management": "node tests/device-management.mjs",
+    "test:realtime": "node tests/realtime-client.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",

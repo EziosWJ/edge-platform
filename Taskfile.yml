@@ -106,6 +106,17 @@ tasks:
     cmds:
       - node scripts/m4-datapoint-acceptance.mjs
 
+  m5:realtime-acceptance:
+    desc: Run the real Collector -> PostgreSQL CurrentValue -> Cloud WebSocket acceptance
+    dir: '{{.ROOT_DIR}}'
+    preconditions:
+      - sh: test -f scripts/m5-realtime-acceptance.mjs
+        msg: scripts/m5-realtime-acceptance.mjs is missing
+      - sh: test -f docs/acceptance/m5-realtime-currentvalue.md
+        msg: docs/acceptance/m5-realtime-currentvalue.md is missing
+    cmds:
+      - node scripts/m5-realtime-acceptance.mjs
+
   frontend:lint:
     desc: Run web lint
     dir: web
