@@ -144,3 +144,11 @@ export type {
   DataPointRecord,
   DataPointValueType,
 } from "./datapoint";
+export type {
+  RealtimeConnectionStatus,
+  RealtimeCurrentValue,
+  RealtimePoint,
+  RealtimeServerMessage,
+  RealtimeSubscribeMessage,
+  RealtimeTicketResponse,
+} from "./realtime";
