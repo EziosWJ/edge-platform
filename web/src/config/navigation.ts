@@ -1,4 +1,4 @@
-import { Bell, Cpu, LayoutDashboard, Server, type LucideIcon } from "lucide-react";
+import { Bell, Cpu, Gauge, LayoutDashboard, Server, type LucideIcon } from "lucide-react";
 import { getMenuIcon } from "@/lib/menu-icons";
 import type { CurrentUserMenu } from "@/types";
 
@@ -15,6 +15,7 @@ export const defaultNavItems: NavItem[] = [
   { label: "工作台", path: "/dashboard", icon: LayoutDashboard },
   { label: "Edge 管理", path: "/edge", icon: Server },
   { label: "Device 管理", path: "/device", icon: Cpu },
+  { label: "DataPoint 管理", path: "/datapoint", icon: Gauge },
   { label: "我的通知", path: "/notifications", icon: Bell },
 ];
 
@@ -104,6 +105,7 @@ export const staticRouteTitleMap: Record<string, string> = {
   "/dashboard": "工作台",
   "/edge": "Edge 管理",
   "/device": "Device 管理",
+  "/datapoint": "DataPoint 管理",
   "/notifications": "我的通知",
   "/settings": "系统设置",
   "/system": "系统管理",

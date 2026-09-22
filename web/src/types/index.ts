@@ -135,3 +135,12 @@ export type {
   UserStatusRequest,
   UserUpdateRequest,
 } from "./user";
+export type {
+  DataPointCurrentValue,
+  DataPointEncoding,
+  DataPointMapping,
+  DataPointPageQuery,
+  DataPointQuality,
+  DataPointRecord,
+  DataPointValueType,
+} from "./datapoint";

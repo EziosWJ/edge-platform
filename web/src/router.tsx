@@ -20,6 +20,7 @@ import { NotificationsPage } from "@/pages/notifications";
 import { NotificationManagePage } from "@/pages/system/notifications";
 import { EdgePage } from "@/pages/edge";
 import { DevicePage } from "@/pages/device";
+import { DataPointPage } from "@/pages/datapoint";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
       { path: "dashboard", element: <DashboardPage /> },
       { path: "edge", element: <EdgePage /> },
       { path: "device", element: <DevicePage /> },
+      { path: "datapoint", element: <DataPointPage /> },
       { path: "settings", element: <SettingsPage /> },
       { path: "system", element: <Navigate to="/system/user" replace /> },
       { path: "system/user", element: <UsersPage /> },

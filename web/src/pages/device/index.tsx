@@ -1,5 +1,6 @@
 import { Eye, RefreshCw, RotateCcw, Search } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getDevicePage } from "@/api/device";
 import { DataTable } from "@/components/common/data-table";
 import { DataTableCard } from "@/components/common/data-table-card";
@@ -65,6 +66,7 @@ function initialFilters(): FilterState {
 }
 
 export function DevicePage() {
+  const navigate = useNavigate();
   const defaultFilters = useMemo(initialFilters, []);
   const {
     data: devices,
@@ -162,19 +164,14 @@ export function DevicePage() {
         align: "center",
         nowrap: true,
         render: (_, record) => (
-          <Button
-            size="sm"
-            variant="ghost"
-            aria-label={`查看 ${record.deviceId} 详情`}
-            onClick={() => openDetail(record)}
-          >
-            <Eye className="h-4 w-4" aria-hidden />
-            详情
-          </Button>
+          <div className="flex gap-1">
+            <Button size="sm" variant="ghost" aria-label={`查看 ${record.deviceId} 详情`} onClick={() => openDetail(record)}><Eye className="h-4 w-4" aria-hidden />详情</Button>
+            <Button size="sm" variant="ghost" onClick={() => navigate(`/datapoint?deviceId=${encodeURIComponent(record.deviceId)}`)}>数据点</Button>
+          </div>
         ),
       },
     ],
-    [openDetail],
+    [navigate, openDetail],
   );
 
   return (
