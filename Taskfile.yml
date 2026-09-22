@@ -117,6 +117,17 @@ tasks:
     cmds:
       - node scripts/m5-realtime-acceptance.mjs
 
+  m6:command-acceptance:
+    desc: Run the real PostgreSQL, Mosquitto, Edge Collector, Modbus and Cloud Command M6 acceptance
+    dir: '{{.ROOT_DIR}}'
+    preconditions:
+      - sh: test -f scripts/m6-command-acceptance.mjs
+        msg: scripts/m6-command-acceptance.mjs is missing
+      - sh: test -f docs/acceptance/m6-command.md
+        msg: docs/acceptance/m6-command.md is missing
+    cmds:
+      - node scripts/m6-command-acceptance.mjs
+
   frontend:lint:
     desc: Run web lint
     dir: web
