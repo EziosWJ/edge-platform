@@ -164,7 +164,20 @@ _Avoid_：history record、Device status、SourceMapping
 **Point Quality**：M4 CurrentValue 的可信度事实。`NO_DATA` 表示配置尚未由新 raw 形成可判定值，`GOOD` 表示本次 raw 可完整解码，`BAD` 表示已收到领域有效 raw 但该 mapping 当前无法形成新有效值。M4 不引入 UNCERTAIN。
 _Avoid_：把 Device OFFLINE 直接解释为 BAD
 
-**Command**：Cloud 发起的设备控制意图。Cloud 经 MQTT 下发，Edge Collector 在既有安全边界内执行并通过 command-result 返回状态。
+**Realtime Subscription**：浏览器对 `deviceId + pointKey` 的当前值实时订阅。M5 通过 Cloud WebSocket 分发已提交的 CurrentValue；PostgreSQL CurrentValue 是恢复事实源，WebSocket 只承载 best-effort latest-state 更新，客户端按 `revision` 合并新旧状态。
+_Avoid_：MQTT subscription、可靠事件历史、register subscription
+
+**WebSocket Ticket**：由有效 Bearer session 换取的一次性、短时、不透明连接凭据，只用于 WebSocket upgrade。它绑定 user/session 身份，不替代 JWT session，也不在 URL 中暴露长期 token。
+_Avoid_：把 JWT 直接放 WebSocket query string
+
+**Command**：Cloud 持久化的设备控制意图与执行生命周期事实。它以 Cloud `deviceId` 为目标，创建时冻结 `edgeId + sourceDeviceId` 路由、name、args、issuedAt/expiresAt，并通过同一个 commandId 跨 HTTP retry、Cloud MQTT retry 与 Edge journal 保持幂等。
+_Avoid_：MQTT publish record、直接使用 sourceDeviceId 作为业务控制身份
+
+**Command Delivery**：Command 的短生命周期可靠下行传输记录，保存冻结 topic 与完全相同的 MQTT payload，在 expiresAt 前有界重发。MQTT PUBACK 只表示 Broker 收到，不能把 Command 解释为 ACCEPTED；只有 Edge command-result 可以改变业务执行状态。
+_Avoid_：通用 Cloud outbox、把 PUBACK 当设备执行确认
+
+**Command Result**：Edge Collector 对既有 Command 的执行事实，包括 ACCEPTED/REJECTED/EXPIRED/SUCCEEDED/FAILED 及来源时间、result/error。Cloud 必须校验 commandId、冻结 route 和 name；FINAL 可以先于 ACCEPTED 到达，终态采用 first-terminal-wins。
+_Avoid_：Cloud timeout 推导出的执行结果
 
 **HMI**：基于 DataPoint 和 Command 的组态展示/控制页面。编辑器计划使用 AntV X6；持久化使用自定义 HMI schema，不把 X6 JSON 直接当作不可替换的领域模型。
 
