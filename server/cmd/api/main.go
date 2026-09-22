@@ -14,6 +14,7 @@ import (
 	_ "github.com/EziosWJ/edge-platform/server/docs"
 	"github.com/EziosWJ/edge-platform/server/internal/app"
 	"github.com/EziosWJ/edge-platform/server/internal/auth"
+	"github.com/EziosWJ/edge-platform/server/internal/command"
 	"github.com/EziosWJ/edge-platform/server/internal/config"
 	"github.com/EziosWJ/edge-platform/server/internal/datapoint"
 	"github.com/EziosWJ/edge-platform/server/internal/dept"
@@ -122,6 +123,11 @@ func main() {
 		slog.Error("build DataPoint service", "error", err)
 		os.Exit(1)
 	}
+	commandService, err := command.NewService(command.NewRepository(database.GORM), deviceService, cfg.MQTT.Prefix)
+	if err != nil {
+		slog.Error("build command service", "error", err)
+		os.Exit(1)
+	}
 
 	application, err := app.New(*cfg, database, app.Dependencies{
 		Auth:         authService,
@@ -136,6 +142,7 @@ func main() {
 		Edge:         edgeService,
 		Device:       deviceService,
 		DataPoint:    datapointService,
+		Command:      commandService,
 		RealtimeHub:  realtimeHub,
 	})
 	if err != nil {

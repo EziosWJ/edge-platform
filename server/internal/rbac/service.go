@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -33,6 +34,20 @@ func (s *Service) RoleDetail(ctx context.Context, id int64) (*RoleDetail, error)
 	return &RoleDetail{Role: *v, MenuIDs: ids}, nil
 }
 func (s *Service) RoleOptions(ctx context.Context) ([]Role, error) { return s.store.EnabledRoles(ctx) }
+
+// HasPermission checks a currently effective permission for an authenticated
+// user. The optional store seam keeps existing RBAC test doubles and CRUD
+// boundaries unchanged while allowing command authorization to be enforced on
+// the server.
+func (s *Service) HasPermission(ctx context.Context, userID int64, permissionCode string) (bool, error) {
+	checker, ok := s.store.(interface {
+		HasPermission(context.Context, int64, string) (bool, error)
+	})
+	if !ok {
+		return false, errors.New("rbac permission checker is not configured")
+	}
+	return checker.HasPermission(ctx, userID, permissionCode)
+}
 func (s *Service) CreateRole(ctx context.Context, m AuditMetadata, in RoleInput) (Role, error) {
 	if e := validRole(in); e != nil {
 		return Role{}, e

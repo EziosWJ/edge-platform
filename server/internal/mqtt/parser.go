@@ -33,6 +33,7 @@ func Filters(prefix string) []string {
 		prefix + "/+/device/+/status",
 		prefix + "/+/device/+/raw",
 		prefix + "/+/device/+/event",
+		prefix + "/+/device/+/command-result",
 	}
 }
 
@@ -54,7 +55,7 @@ func ParseTopic(prefix, topic string) (Topic, error) {
 	if !validTopicID(parts[len(base)]) || !validTopicID(parts[len(base)+2]) {
 		return Topic{}, ErrTopicNotSubscribed
 	}
-	kind := map[string]MessageKind{"status": KindDeviceStatus, "raw": KindRawRegisterSnapshot, "event": KindDeviceEvent}[parts[len(base)+3]]
+	kind := map[string]MessageKind{"status": KindDeviceStatus, "raw": KindRawRegisterSnapshot, "event": KindDeviceEvent, "command-result": KindCommandResult}[parts[len(base)+3]]
 	if kind == "" {
 		return Topic{}, ErrTopicNotSubscribed
 	}
@@ -110,7 +111,11 @@ func (p *Parser) Parse(topic string, payload []byte, qos byte, retained bool) (I
 		p.reject("topic")
 		return nil, nil, err
 	}
-	if len(payload) > p.MaxPayloadBytes {
+	maxPayloadBytes := p.MaxPayloadBytes
+	if t.Kind == KindCommandResult && maxPayloadBytes > MaxCommandResultPayloadBytes {
+		maxPayloadBytes = MaxCommandResultPayloadBytes
+	}
+	if len(payload) > maxPayloadBytes {
 		p.reject("payload_too_large")
 		return nil, nil, ErrPayloadTooLarge
 	}
@@ -170,6 +175,8 @@ func (p *Parser) Parse(topic string, payload []byte, qos byte, retained bool) (I
 		return RawRegisterSnapshotMessage{IngressMetadata: metadata, Data: cloneJSON(raw.Data)}, violations, nil
 	case KindDeviceEvent:
 		return DeviceEventMessage{IngressMetadata: metadata, Data: cloneJSON(raw.Data)}, violations, nil
+	case KindCommandResult:
+		return CommandResultMessage{IngressMetadata: metadata, Data: cloneJSON(raw.Data)}, violations, nil
 	default:
 		return nil, nil, ErrUnknownSchema
 	}
@@ -183,7 +190,7 @@ func expectedQoS(kind MessageKind) byte {
 }
 
 func retainedIsContractViolation(kind MessageKind) bool {
-	return kind == KindRawRegisterSnapshot || kind == KindDeviceEvent
+	return kind == KindRawRegisterSnapshot || kind == KindDeviceEvent || kind == KindCommandResult
 }
 
 func ParseTopicFromConfiguredParser(p *Parser, topic string) (Topic, error) {
@@ -213,6 +220,9 @@ func SetParserPrefix(p *Parser, prefix string) error {
 }
 
 func schemaMatches(kind MessageKind, schema string) bool {
+	if kind == KindCommandResult {
+		return schema == "device-command-result/v1"
+	}
 	return schema == string(kind)+"/v1"
 }
 

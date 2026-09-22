@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/EziosWJ/edge-platform/server/internal/command"
 	"github.com/EziosWJ/edge-platform/server/internal/config"
 	"github.com/EziosWJ/edge-platform/server/internal/datapoint"
 	"github.com/EziosWJ/edge-platform/server/internal/device"
@@ -26,10 +27,10 @@ func newMQTTRuntime(cfg config.MQTTConfig, runtime platformhttp.MQTTRuntime, edg
 	if len(edgeServices) > 0 {
 		edgeService = edgeServices[0]
 	}
-	return newMQTTRuntimeWithServices(cfg, runtime, edgeService, nil)
+	return newMQTTRuntimeWithServices(cfg, runtime, edgeService, nil, nil, nil)
 }
 
-func newMQTTRuntimeWithServices(cfg config.MQTTConfig, runtime platformhttp.MQTTRuntime, edgeService *edge.Service, deviceService *device.Service, dataPointServices ...*datapoint.Service) (platformhttp.MQTTRuntime, error) {
+func newMQTTRuntimeWithServices(cfg config.MQTTConfig, runtime platformhttp.MQTTRuntime, edgeService *edge.Service, deviceService *device.Service, dataPointService *datapoint.Service, commandService *command.Service) (platformhttp.MQTTRuntime, error) {
 	if runtime != nil {
 		return runtime, nil
 	}
@@ -38,11 +39,8 @@ func newMQTTRuntimeWithServices(cfg config.MQTTConfig, runtime platformhttp.MQTT
 		edge:   newEdgeStatusConsumer(edgeService),
 		device: newDeviceStatusConsumer(deviceService),
 	}
-	if len(dataPointServices) > 0 {
-		consumer.raw = newRawSnapshotConsumer(dataPointServices[0])
-	} else {
-		consumer.raw = newRawSnapshotConsumer(nil)
-	}
+	consumer.raw = newRawSnapshotConsumer(dataPointService)
+	consumer.commandResult = newCommandResultConsumerWithObserver(commandService, newCommandResultMetricObserver(prometheus.DefaultRegisterer))
 	internalConfig := mqtt.Config{
 		Enabled:           cfg.Enabled,
 		BrokerURL:         cfg.URL,
@@ -67,16 +65,52 @@ func newMQTTRuntimeWithServices(cfg config.MQTTConfig, runtime platformhttp.MQTT
 	if err != nil {
 		return nil, fmt.Errorf("build MQTT runtime: %w", err)
 	}
-	return &mqttRuntimeAdapter{runtime: internalRuntime}, nil
+	var dispatcher *command.Dispatcher
+	if cfg.Enabled && commandService != nil {
+		dispatcher, err = command.NewDispatcher(commandService, mqttCommandPublisher{runtime: internalRuntime})
+		if err != nil {
+			return nil, fmt.Errorf("build command dispatcher: %w", err)
+		}
+	}
+	return &mqttRuntimeAdapter{runtime: internalRuntime, dispatcher: dispatcher}, nil
 }
 
 type mqttRuntimeAdapter struct {
-	runtime *mqtt.Runtime
+	runtime    *mqtt.Runtime
+	dispatcher *command.Dispatcher
 }
 
-func (a *mqttRuntimeAdapter) Start(ctx context.Context) error { return a.runtime.Start(ctx) }
+type mqttCommandPublisher struct{ runtime *mqtt.Runtime }
 
-func (a *mqttRuntimeAdapter) Stop(ctx context.Context) error { return a.runtime.Stop(ctx) }
+func (p mqttCommandPublisher) PublishCommand(ctx context.Context, delivery command.Delivery) error {
+	return p.runtime.PublishCommand(ctx, mqtt.CommandPublication{CommandID: delivery.CommandID, Topic: delivery.Topic, Payload: delivery.Payload})
+}
+
+func (a *mqttRuntimeAdapter) Start(ctx context.Context) error {
+	if err := a.runtime.Start(ctx); err != nil {
+		return err
+	}
+	if a.dispatcher != nil {
+		if err := a.dispatcher.Start(ctx); err != nil {
+			_ = a.runtime.Stop(ctx)
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *mqttRuntimeAdapter) Stop(ctx context.Context) error {
+	var firstErr error
+	if a.dispatcher != nil {
+		if err := a.dispatcher.Stop(ctx); err != nil {
+			firstErr = err
+		}
+	}
+	if err := a.runtime.Stop(ctx); err != nil && firstErr == nil {
+		firstErr = err
+	}
+	return firstErr
+}
 
 func (a *mqttRuntimeAdapter) ReplayDeviceStatus(ctx context.Context) error {
 	return a.runtime.ReplayDeviceStatus(ctx)
@@ -111,6 +145,8 @@ func (a *mqttRuntimeAdapter) Status() platformhttp.MQTTStatus {
 			result.Subscriptions.Raw = ready
 		case strings.HasSuffix(filter, "/device/+/event"):
 			result.Subscriptions.Event = ready
+		case strings.HasSuffix(filter, "/device/+/command-result"):
+			result.Subscriptions.CommandResult = ready
 		case strings.HasSuffix(filter, "/+/status"):
 			result.Subscriptions.EdgeStatus = ready
 		}

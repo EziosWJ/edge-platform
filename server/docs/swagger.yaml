@@ -131,6 +131,93 @@ definitions:
       message:
         type: string
     type: object
+  command.ApiEnvelope:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+  command.CommandPage:
+    properties:
+      page:
+        type: integer
+      pageSize:
+        type: integer
+      records:
+        items:
+          $ref: '#/definitions/command.CommandView'
+        type: array
+      total:
+        type: integer
+    type: object
+  command.CommandView:
+    properties:
+      args:
+        items:
+          type: integer
+        type: array
+      commandId:
+        type: string
+      completedAt:
+        type: string
+      deliveryExpiredAt:
+        type: string
+      deviceId:
+        type: string
+      edgeId:
+        type: string
+      edgeReceivedAt:
+        type: string
+      errorMessage:
+        type: string
+      errorType:
+        type: string
+      expiresAt:
+        type: string
+      issuedAt:
+        type: string
+      name:
+        type: string
+      requestedBy:
+        type: integer
+      result:
+        items:
+          type: integer
+        type: array
+      resultReceivedAt:
+        type: string
+      sourceDeviceId:
+        type: string
+      startedAt:
+        type: string
+      status:
+        type: string
+    type: object
+  command.commandPageResponse:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/command.CommandPage'
+      message:
+        type: string
+    type: object
+  command.createRequestDoc:
+    properties:
+      args:
+        additionalProperties: {}
+        type: object
+      commandId:
+        type: string
+      deviceId:
+        type: string
+      name:
+        type: string
+      ttlSeconds:
+        type: integer
+    type: object
   datapoint.ApiEnvelope:
     properties:
       code:
@@ -688,6 +775,132 @@ paths:
       summary: 当前用户可见菜单
       tags:
       - 认证
+  /api/command:
+    post:
+      parameters:
+      - description: Command 创建请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/command.createRequestDoc'
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/command.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/command.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/command.ApiEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/command.ApiEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/command.ApiEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/command.ApiEnvelope'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/command.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 创建并幂等受理 Command
+      tags:
+      - Command
+  /api/command/{commandId}:
+    get:
+      parameters:
+      - description: Command ID
+        in: path
+        name: commandId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/command.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/command.ApiEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/command.ApiEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/command.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 查询 Command 详情
+      tags:
+      - Command
+  /api/command/page:
+    get:
+      parameters:
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，1-500，默认 10
+        in: query
+        name: pageSize
+        type: integer
+      - description: Command ID，精确匹配
+        in: query
+        name: commandId
+        type: string
+      - description: Cloud Device ID，精确匹配
+        in: query
+        name: deviceId
+        type: string
+      - description: Command 名称，精确匹配
+        in: query
+        name: name
+        type: string
+      - description: PENDING、ACCEPTED、REJECTED、EXPIRED、SUCCEEDED 或 FAILED
+        in: query
+        name: status
+        type: string
+      - description: 创建者用户 ID，严格整数
+        in: query
+        name: requestedBy
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/command.commandPageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/command.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/command.ApiEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/command.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 查询 Command 分页
+      tags:
+      - Command
   /api/datapoint:
     post:
       parameters:

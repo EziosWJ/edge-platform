@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -36,7 +37,7 @@ func TestParseTopicAndEnvelope(t *testing.T) {
 	if string(event.Data) != `{"name":"changed"}` {
 		t.Fatalf("data = %s", event.Data)
 	}
-	if got := Filters("edge"); len(got) != 4 || got[2] != "edge/+/device/+/raw" {
+	if got := Filters("edge"); len(got) != 5 || got[2] != "edge/+/device/+/raw" || got[4] != "edge/+/device/+/command-result" {
 		t.Fatalf("filters = %v", got)
 	}
 }
@@ -53,6 +54,11 @@ func TestParserRejectsIdentityAndPayloadLimit(t *testing.T) {
 	}
 	if _, _, err := p.Parse("edge/edge-1/unknown", payload, 1, false); err != ErrTopicNotSubscribed {
 		t.Fatalf("topic error = %v", err)
+	}
+	largeResult := []byte(`{"schema":"device-command-result/v1","messageId":"m","edgeId":"edge-1","deviceId":"device-1","timestamp":"2026-09-20T00:00:00Z","data":{"commandId":"11111111-1111-4111-8111-111111111111","name":"close","status":"SUCCEEDED","receivedAt":"2026-09-20T00:00:00Z","startedAt":null,"completedAt":null,"result":"` + strings.Repeat("x", MaxCommandResultPayloadBytes) + `","error":null}}`)
+	p.MaxPayloadBytes = 1 << 20
+	if _, _, err := p.Parse("edge/edge-1/device/device-1/command-result", largeResult, 1, false); err != ErrPayloadTooLarge {
+		t.Fatalf("command-result size error = %v, want %v", err, ErrPayloadTooLarge)
 	}
 }
 
@@ -89,6 +95,8 @@ func TestParserValidatesKindSpecificDeliveryContract(t *testing.T) {
 		{name: "event live", topic: "edge/edge-01/device/device-01/event", fixture: "device-event.json", qos: 1},
 		{name: "event retained", topic: "edge/edge-01/device/device-01/event", fixture: "device-event.json", qos: 1, retained: true, want: []ContractViolation{ViolationRetained}},
 		{name: "event wrong qos and retained", topic: "edge/edge-01/device/device-01/event", fixture: "device-event.json", retained: true, want: []ContractViolation{ViolationQoS, ViolationRetained}},
+		{name: "command result live", topic: "edge/edge-01/device/device-01/command-result", fixture: "command-result.json", qos: 1},
+		{name: "command result retained", topic: "edge/edge-01/device/device-01/command-result", fixture: "command-result.json", qos: 1, retained: true, want: []ContractViolation{ViolationRetained}},
 	}
 
 	parser := NewParser(1<<20, nil, slog.Default())
@@ -121,6 +129,7 @@ func TestParserAcceptsEdgeCollectorWireFixtures(t *testing.T) {
 		{name: "device-status.json", topic: "edge/edge-01/device/device-01/status", kind: KindDeviceStatus, deviceID: "device-01", qos: 1},
 		{name: "raw-register-snapshot.json", topic: "edge/edge-01/device/device-01/raw", kind: KindRawRegisterSnapshot, deviceID: "device-01", qos: 0},
 		{name: "device-event.json", topic: "edge/edge-01/device/device-01/event", kind: KindDeviceEvent, deviceID: "device-01", qos: 1},
+		{name: "command-result.json", topic: "edge/edge-01/device/device-01/command-result", kind: KindCommandResult, deviceID: "device-01", qos: 1},
 	}
 
 	parser := NewParser(1<<20, nil, slog.Default())

@@ -119,9 +119,10 @@ func (c deviceStatusConsumer) Consume(ctx context.Context, message mqtt.IngressM
 }
 
 type ingressConsumer struct {
-	edge   mqtt.Consumer
-	device mqtt.Consumer
-	raw    mqtt.Consumer
+	edge          mqtt.Consumer
+	device        mqtt.Consumer
+	raw           mqtt.Consumer
+	commandResult mqtt.Consumer
 }
 
 func (c ingressConsumer) Consume(ctx context.Context, message mqtt.IngressMessage) mqtt.DeliveryOutcome {
@@ -135,6 +136,11 @@ func (c ingressConsumer) Consume(ctx context.Context, message mqtt.IngressMessag
 			return mqtt.OutcomeAccepted
 		}
 		return c.raw.Consume(ctx, message)
+	case mqtt.KindCommandResult:
+		if c.commandResult == nil {
+			return mqtt.OutcomeAccepted
+		}
+		return c.commandResult.Consume(ctx, message)
 	default:
 		return mqtt.OutcomeAccepted
 	}

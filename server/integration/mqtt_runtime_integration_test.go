@@ -64,6 +64,57 @@ func TestMQTTRuntimeProtocolsAndTransports(t *testing.T) {
 	}
 }
 
+func TestMQTTRuntimePublishesFrozenCommandQoS1(t *testing.T) {
+	for _, protocol := range []mqtt.Protocol{mqtt.ProtocolMQTT5, mqtt.ProtocolMQTT311} {
+		t.Run(string(protocol), func(t *testing.T) {
+			broker := startMQTTBroker(t, mqttBrokerOptions{})
+			cfg := runtimeConfig(t, broker, protocol, false, false)
+			runtime, err := mqtt.NewRuntime(cfg, mqtt.ConsumerFunc(func(context.Context, mqtt.IngressMessage) mqtt.DeliveryOutcome {
+				return mqtt.OutcomeAccepted
+			}), nil, mqtt.NewMetrics(nil), nil)
+			if err != nil {
+				t.Fatalf("create MQTT runtime: %v", err)
+			}
+			startRuntime(t, runtime)
+
+			payload := []byte(`{"schema":"device-command/v1","commandId":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","deviceId":"device-01","name":"close","args":{"value":90071992547409931234567890},"issuedAt":"2026-09-22T05:00:00Z","expiresAt":"2026-09-22T05:00:30Z"}`)
+			received := make(chan mqtt311.Message, 1)
+			subscriberOptions := mqtt311.NewClientOptions().
+				AddBroker(broker.plaintext.URL("mqtt")).
+				SetClientID(fmt.Sprintf("command-subscriber-%s-%d", protocol, time.Now().UnixNano())).
+				SetCleanSession(true).
+				SetConnectTimeout(10 * time.Second).
+				SetDefaultPublishHandler(func(_ mqtt311.Client, message mqtt311.Message) { received <- message })
+			subscriber := mqtt311.NewClient(subscriberOptions)
+			connect := subscriber.Connect()
+			if !connect.WaitTimeout(10*time.Second) || connect.Error() != nil {
+				t.Fatalf("connect command subscriber: %v", connect.Error())
+			}
+			t.Cleanup(func() { subscriber.Disconnect(100) })
+			subscribe := subscriber.Subscribe("edge/edge-01/device/device-01/command", 1, nil)
+			if !subscribe.WaitTimeout(10*time.Second) || subscribe.Error() != nil {
+				t.Fatalf("subscribe command topic: %v", subscribe.Error())
+			}
+
+			if err := runtime.PublishCommand(context.Background(), mqtt.CommandPublication{
+				CommandID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+				Topic:     "edge/edge-01/device/device-01/command",
+				Payload:   payload,
+			}); err != nil {
+				t.Fatalf("PublishCommand() error: %v", err)
+			}
+			select {
+			case message := <-received:
+				if message.Qos() != 1 || message.Retained() || message.Topic() != "edge/edge-01/device/device-01/command" || string(message.Payload()) != string(payload) {
+					t.Fatalf("received command = qos %d retained %v topic %s payload %s", message.Qos(), message.Retained(), message.Topic(), message.Payload())
+				}
+			case <-time.After(10 * time.Second):
+				t.Fatal("command subscriber did not receive QoS1 publication")
+			}
+		})
+	}
+}
+
 func TestMQTTRuntimePersistentSessions(t *testing.T) {
 	for _, protocol := range []mqtt.Protocol{mqtt.ProtocolMQTT5, mqtt.ProtocolMQTT311} {
 		t.Run(string(protocol), func(t *testing.T) {

@@ -14,6 +14,8 @@ type fakeClient struct {
 	once          sync.Once
 	mu            sync.Mutex
 	subscriptions [][]Subscription
+	publications  []Publication
+	publishErr    error
 	subscribed    atomic.Bool
 }
 
@@ -23,6 +25,13 @@ func (c *fakeClient) Subscribe(_ context.Context, subscriptions []Subscription) 
 	c.mu.Unlock()
 	c.subscribed.Store(true)
 	return nil
+}
+func (c *fakeClient) Publish(_ context.Context, publication Publication) error {
+	c.mu.Lock()
+	c.publications = append(c.publications, Publication{Topic: publication.Topic, Payload: append([]byte(nil), publication.Payload...), QoS: publication.QoS, Retain: publication.Retain})
+	err := c.publishErr
+	c.mu.Unlock()
+	return err
 }
 func (c *fakeClient) Close(context.Context) error { c.once.Do(func() { close(c.done) }); return nil }
 func (c *fakeClient) Done() <-chan struct{}       { return c.done }
@@ -97,6 +106,63 @@ func TestRuntimeReadyManualAckAndGracefulStop(t *testing.T) {
 	}
 	if got := r.Status().State; got != StateStopped {
 		t.Fatalf("state = %s", got)
+	}
+}
+
+func TestRuntimePublishesOnlyValidatedCommandAtQoS1WithoutRetain(t *testing.T) {
+	cfg := enabledConfig()
+	cfg.ReconnectMin = time.Millisecond
+	cfg.ReconnectMax = 2 * time.Millisecond
+	factory := &fakeFactory{}
+	r, err := NewRuntime(cfg, ConsumerFunc(func(context.Context, IngressMessage) DeliveryOutcome { return OutcomeAccepted }), factory, NewMetrics(nil), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	waitUntil(t, func() bool { return r.Ready() && factory.count() == 1 })
+	payload := []byte(`{"schema":"device-command/v1","commandId":"99999999-9999-4999-8999-999999999999","deviceId":"source-1","name":"close","args":{"value":90071992547409931234567890},"issuedAt":"2026-09-22T05:00:00Z","expiresAt":"2026-09-22T05:00:30Z"}`)
+	if err := r.PublishCommand(context.Background(), CommandPublication{CommandID: "99999999-9999-4999-8999-999999999999", Topic: "edge/edge-1/device/source-1/command", Payload: payload}); err != nil {
+		t.Fatal(err)
+	}
+	factory.mu.Lock()
+	client := factory.clients[0]
+	factory.mu.Unlock()
+	client.mu.Lock()
+	defer client.mu.Unlock()
+	if len(client.publications) != 1 {
+		t.Fatalf("publications = %+v", client.publications)
+	}
+	publication := client.publications[0]
+	if publication.QoS != 1 || publication.Retain || publication.Topic != "edge/edge-1/device/source-1/command" || string(publication.Payload) != string(payload) {
+		t.Fatalf("publication = %+v", publication)
+	}
+	stopCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := r.Stop(stopCtx); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRuntimeRejectsArbitraryCommandPublication(t *testing.T) {
+	cfg := enabledConfig()
+	factory := &fakeFactory{}
+	r, err := NewRuntime(cfg, ConsumerFunc(func(context.Context, IngressMessage) DeliveryOutcome { return OutcomeAccepted }), factory, NewMetrics(nil), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	waitUntil(t, func() bool { return r.Ready() })
+	if err := r.PublishCommand(context.Background(), CommandPublication{CommandID: "x", Topic: "edge/edge-1/anything", Payload: []byte(`{}`)}); !errors.Is(err, ErrInvalidCommandTopic) && !errors.Is(err, ErrMalformedCommandPublication) {
+		t.Fatalf("arbitrary publication error = %v", err)
+	}
+	stopCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := r.Stop(stopCtx); err != nil {
+		t.Fatal(err)
 	}
 }
 

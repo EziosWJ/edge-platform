@@ -135,6 +135,24 @@ func (r *Repository) EnabledRoles(ctx context.Context) ([]Role, error) {
 	err := r.db.WithContext(ctx).Where("status=1 AND deleted=0").Order("sort_order,id").Find(&v).Error
 	return v, err
 }
+
+// HasPermission is the narrow server-side authorization seam used by domain
+// modules. It deliberately checks the current user/role/menu graph instead
+// of reusing the visible-menu projection, because visibility is a UI concern.
+func (r *Repository) HasPermission(ctx context.Context, userID int64, permissionCode string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Table("sys_user AS u").
+		Joins("JOIN sys_user_role AS ur ON ur.user_id = u.id").
+		Joins("JOIN sys_role AS r ON r.id = ur.role_id").
+		Joins("JOIN sys_role_menu AS rm ON rm.role_id = r.id").
+		Joins("JOIN sys_menu AS m ON m.id = rm.menu_id").
+		Where("u.id = ? AND u.status = 1 AND u.deleted = 0", userID).
+		Where("r.status = 1 AND r.deleted = 0").
+		Where("m.permission_code = ? AND m.status = 1 AND m.deleted = 0", permissionCode).
+		Count(&count).Error
+	return count > 0, err
+}
+
 func (r *Repository) ListMenus(ctx context.Context) ([]Menu, error) {
 	var v []Menu
 	err := r.db.WithContext(ctx).Where("deleted=0").Order("sort_order,id").Find(&v).Error

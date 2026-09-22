@@ -36,6 +36,9 @@ const (
 	OutcomeAccepted DeliveryOutcome = "accepted"
 	OutcomeRejected DeliveryOutcome = "rejected"
 	OutcomeRetry    DeliveryOutcome = "retry"
+	// Collector reserves 256 KiB for command and reliable command-result payloads.
+	MaxCommandPayloadBytes       = 256 * 1024
+	MaxCommandResultPayloadBytes = 256 * 1024
 )
 
 // Config is independent from the application config package so the MQTT
@@ -83,7 +86,7 @@ func DefaultConfig() Config {
 	}
 }
 
-// IngressMetadata is shared by all four typed ingress messages.
+// IngressMetadata is shared by all typed ingress messages.
 type IngressMetadata struct {
 	Topic           string
 	Schema          string
@@ -108,6 +111,7 @@ const (
 	KindDeviceStatus        MessageKind = "device-status"
 	KindRawRegisterSnapshot MessageKind = "raw-register-snapshot"
 	KindDeviceEvent         MessageKind = "device-event"
+	KindCommandResult       MessageKind = "device-command-result"
 )
 
 // Data is intentionally kept as JSON at the ingest seam. Future domain
@@ -129,15 +133,21 @@ type DeviceEventMessage struct {
 	IngressMetadata
 	Data json.RawMessage
 }
+type CommandResultMessage struct {
+	IngressMetadata
+	Data json.RawMessage
+}
 
 func (m EdgeStatusMessage) Metadata() IngressMetadata          { return m.IngressMetadata }
 func (m DeviceStatusMessage) Metadata() IngressMetadata        { return m.IngressMetadata }
 func (m RawRegisterSnapshotMessage) Metadata() IngressMetadata { return m.IngressMetadata }
 func (m DeviceEventMessage) Metadata() IngressMetadata         { return m.IngressMetadata }
+func (m CommandResultMessage) Metadata() IngressMetadata       { return m.IngressMetadata }
 func (EdgeStatusMessage) Kind() MessageKind                    { return KindEdgeStatus }
 func (DeviceStatusMessage) Kind() MessageKind                  { return KindDeviceStatus }
 func (RawRegisterSnapshotMessage) Kind() MessageKind           { return KindRawRegisterSnapshot }
 func (DeviceEventMessage) Kind() MessageKind                   { return KindDeviceEvent }
+func (CommandResultMessage) Kind() MessageKind                 { return KindCommandResult }
 
 type ContractViolation string
 

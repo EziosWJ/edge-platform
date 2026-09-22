@@ -110,6 +110,16 @@ type paho311Client struct {
 	closeDone func()
 }
 
+func (c *paho311Client) Publish(ctx context.Context, publication Publication) error {
+	token := c.client.Publish(publication.Topic, publication.QoS, publication.Retain, publication.Payload)
+	select {
+	case <-token.Done():
+		return token.Error()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 func (c *paho311Client) Subscribe(ctx context.Context, subscriptions []Subscription) error {
 	filters := make(map[string]byte, len(subscriptions))
 	for _, subscription := range subscriptions {
@@ -184,6 +194,11 @@ func (f *PahoFactory) connect5(ctx context.Context, handler PublishHandler) (Cli
 type paho5Client struct {
 	client *mqtt5.Client
 	conn   net.Conn
+}
+
+func (c *paho5Client) Publish(ctx context.Context, publication Publication) error {
+	_, err := c.client.Publish(ctx, &mqtt5.Publish{Topic: publication.Topic, Payload: append([]byte(nil), publication.Payload...), QoS: publication.QoS, Retain: publication.Retain})
+	return err
 }
 
 func (c *paho5Client) Subscribe(ctx context.Context, subscriptions []Subscription) error {

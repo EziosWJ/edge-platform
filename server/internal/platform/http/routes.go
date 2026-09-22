@@ -25,13 +25,14 @@ const (
 	MQTTStateStopped      = "STOPPED"
 )
 
-// MQTTSubscriptionStatus is a stable, domain-neutral projection of the four
+// MQTTSubscriptionStatus is a stable, domain-neutral projection of the five
 // M1 subscriptions. It deliberately contains no MQTT envelope or raw payload.
 type MQTTSubscriptionStatus struct {
-	EdgeStatus   bool `json:"edgeStatus"`
-	DeviceStatus bool `json:"deviceStatus"`
-	Raw          bool `json:"raw"`
-	Event        bool `json:"event"`
+	EdgeStatus    bool `json:"edgeStatus"`
+	DeviceStatus  bool `json:"deviceStatus"`
+	Raw           bool `json:"raw"`
+	Event         bool `json:"event"`
+	CommandResult bool `json:"commandResult"`
 }
 
 // MQTTStatus is the redacted diagnostic projection exposed by the HTTP layer.

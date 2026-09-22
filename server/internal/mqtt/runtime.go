@@ -1,8 +1,11 @@
 package mqtt
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"math/rand"
 	"strings"
@@ -24,10 +27,29 @@ type Received struct {
 	Ack      func() error
 }
 
+// Publication is private to the MQTT transport seam. QoS and retain are
+// supplied by the command-specific runtime method, not by business callers.
+type Publication struct {
+	Topic   string
+	Payload []byte
+	QoS     byte
+	Retain  bool
+}
+
+// CommandPublication is the only outbound business publication accepted by
+// Runtime. Its topic and payload must be the matching frozen command wire
+// contract; arbitrary MQTT topics are not exposed.
+type CommandPublication struct {
+	CommandID string
+	Topic     string
+	Payload   []byte
+}
+
 type PublishHandler func(Received)
 
 type Client interface {
 	Subscribe(context.Context, []Subscription) error
+	Publish(context.Context, Publication) error
 	Close(context.Context) error
 	Done() <-chan struct{}
 }
@@ -37,8 +59,10 @@ type ClientFactory interface {
 }
 
 var (
-	ErrRuntimeNotReady = errors.New("mqtt runtime is not ready")
-	ErrRuntimeDisabled = errors.New("mqtt runtime is disabled")
+	ErrRuntimeNotReady             = errors.New("mqtt runtime is not ready")
+	ErrRuntimeDisabled             = errors.New("mqtt runtime is disabled")
+	ErrInvalidCommandTopic         = errors.New("invalid command publish topic")
+	ErrMalformedCommandPublication = errors.New("malformed command publication")
 )
 
 type Runtime struct {
@@ -105,7 +129,7 @@ func NewRuntime(cfg Config, consumer Consumer, factory ClientFactory, metrics *M
 }
 
 func subscriptionStatus(prefix string) map[string]bool {
-	result := make(map[string]bool, 4)
+	result := make(map[string]bool, 5)
 	for _, filter := range Filters(prefix) {
 		result[filter] = false
 	}
@@ -258,6 +282,72 @@ func (r *Runtime) ReplayDeviceStatus(ctx context.Context) error {
 		// coordinator must not retry this operation in a loop.
 		r.requestReconnect()
 		return err
+	}
+	return nil
+}
+
+func (r *Runtime) PublishCommand(ctx context.Context, publication CommandPublication) error {
+	if err := validateCommandPublication(r.cfg.TopicPrefix, publication); err != nil {
+		return err
+	}
+	if !r.cfg.Enabled {
+		return ErrRuntimeDisabled
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	r.mu.RLock()
+	client := r.client
+	ready := r.status.State == StateReady && r.accepting.Load() && !r.forceStop.Load()
+	r.mu.RUnlock()
+	if client == nil || !ready {
+		return ErrRuntimeNotReady
+	}
+	err := client.Publish(ctx, Publication{Topic: publication.Topic, Payload: append([]byte(nil), publication.Payload...), QoS: 1, Retain: false})
+	return err
+}
+
+func validateCommandPublication(prefix string, publication CommandPublication) error {
+	if len(publication.Payload) == 0 || len(publication.Payload) > MaxCommandPayloadBytes || !validTopicID(publication.CommandID) {
+		return ErrMalformedCommandPublication
+	}
+	parts := strings.Split(publication.Topic, "/")
+	base := strings.Split(prefix, "/")
+	if len(parts) != len(base)+4 || !equalParts(parts[:len(base)], base) ||
+		!validTopicID(parts[len(base)]) || parts[len(base)+1] != "device" ||
+		!validTopicID(parts[len(base)+2]) || parts[len(base)+3] != "command" {
+		return ErrInvalidCommandTopic
+	}
+	var raw struct {
+		Schema    string          `json:"schema"`
+		CommandID string          `json:"commandId"`
+		DeviceID  string          `json:"deviceId"`
+		Name      string          `json:"name"`
+		Args      json.RawMessage `json:"args"`
+		IssuedAt  string          `json:"issuedAt"`
+		ExpiresAt string          `json:"expiresAt"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(publication.Payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&raw); err != nil || raw.Schema != "device-command/v1" || raw.CommandID != publication.CommandID ||
+		raw.DeviceID != parts[len(base)+2] || !validTopicID(raw.Name) || len(raw.Args) == 0 || raw.IssuedAt == "" || raw.ExpiresAt == "" {
+		return ErrMalformedCommandPublication
+	}
+	var args map[string]json.RawMessage
+	if err := json.Unmarshal(raw.Args, &args); err != nil || args == nil {
+		return ErrMalformedCommandPublication
+	}
+	issuedAt, err := time.Parse(time.RFC3339Nano, raw.IssuedAt)
+	if err != nil {
+		return ErrMalformedCommandPublication
+	}
+	expiresAt, err := time.Parse(time.RFC3339Nano, raw.ExpiresAt)
+	if err != nil || !expiresAt.After(issuedAt) {
+		return ErrMalformedCommandPublication
+	}
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		return ErrMalformedCommandPublication
 	}
 	return nil
 }

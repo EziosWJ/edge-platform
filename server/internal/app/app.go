@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/EziosWJ/edge-platform/server/internal/auth"
+	"github.com/EziosWJ/edge-platform/server/internal/command"
 	"github.com/EziosWJ/edge-platform/server/internal/config"
 	"github.com/EziosWJ/edge-platform/server/internal/datapoint"
 	"github.com/EziosWJ/edge-platform/server/internal/dept"
@@ -43,6 +44,7 @@ type Dependencies struct {
 	Edge         *edge.Service
 	Device       *device.Service
 	DataPoint    *datapoint.Service
+	Command      *command.Service
 	RealtimeHub  *realtime.Hub
 	MQTT         platformhttp.MQTTRuntime
 }
@@ -70,7 +72,7 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 	if err != nil {
 		return nil, err
 	}
-	mqttRuntime, err := newMQTTRuntimeWithServices(cfg.MQTT, deps.MQTT, deps.Edge, deps.Device, deps.DataPoint)
+	mqttRuntime, err := newMQTTRuntimeWithServices(cfg.MQTT, deps.MQTT, deps.Edge, deps.Device, deps.DataPoint, deps.Command)
 	if err != nil {
 		return nil, err
 	}
@@ -196,6 +198,15 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 		points := router.Group("/api/datapoint")
 		points.Use(auth.BearerMiddleware(deps.Auth))
 		datapoint.RegisterRoutes(points, datapointHandler)
+	}
+	if deps.Command != nil {
+		commandHandler, err := command.NewHandler(deps.Command, deps.RBAC)
+		if err != nil {
+			return nil, fmt.Errorf("create command handler: %w", err)
+		}
+		commands := router.Group("/api/command")
+		commands.Use(auth.BearerMiddleware(deps.Auth))
+		command.RegisterRoutes(commands, commandHandler)
 	}
 
 	var realtimeService *realtime.Service
