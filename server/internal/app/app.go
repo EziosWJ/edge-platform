@@ -12,6 +12,7 @@ import (
 
 	"github.com/EziosWJ/edge-platform/server/internal/auth"
 	"github.com/EziosWJ/edge-platform/server/internal/config"
+	"github.com/EziosWJ/edge-platform/server/internal/datapoint"
 	"github.com/EziosWJ/edge-platform/server/internal/dept"
 	"github.com/EziosWJ/edge-platform/server/internal/device"
 	"github.com/EziosWJ/edge-platform/server/internal/dictionary"
@@ -40,6 +41,7 @@ type Dependencies struct {
 	Notification *notification.Service
 	Edge         *edge.Service
 	Device       *device.Service
+	DataPoint    *datapoint.Service
 	MQTT         platformhttp.MQTTRuntime
 }
 
@@ -62,7 +64,7 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 	if err != nil {
 		return nil, err
 	}
-	mqttRuntime, err := newMQTTRuntimeWithServices(cfg.MQTT, deps.MQTT, deps.Edge, deps.Device)
+	mqttRuntime, err := newMQTTRuntimeWithServices(cfg.MQTT, deps.MQTT, deps.Edge, deps.Device, deps.DataPoint)
 	if err != nil {
 		return nil, err
 	}
@@ -179,6 +181,15 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 		devices := router.Group("/api/device")
 		devices.Use(auth.BearerMiddleware(deps.Auth))
 		device.RegisterRoutes(devices, deviceHandler)
+	}
+	if deps.DataPoint != nil {
+		datapointHandler, err := datapoint.NewHandler(deps.DataPoint)
+		if err != nil {
+			return nil, fmt.Errorf("create DataPoint handler: %w", err)
+		}
+		points := router.Group("/api/datapoint")
+		points.Use(auth.BearerMiddleware(deps.Auth))
+		datapoint.RegisterRoutes(points, datapointHandler)
 	}
 
 	if cfg.Environment == config.EnvironmentDev && cfg.Swagger.Enabled {

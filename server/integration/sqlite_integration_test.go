@@ -21,6 +21,7 @@ import (
 	"github.com/EziosWJ/edge-platform/server/internal/app"
 	"github.com/EziosWJ/edge-platform/server/internal/auth"
 	"github.com/EziosWJ/edge-platform/server/internal/config"
+	"github.com/EziosWJ/edge-platform/server/internal/datapoint"
 	"github.com/EziosWJ/edge-platform/server/internal/dept"
 	"github.com/EziosWJ/edge-platform/server/internal/dictionary"
 	"github.com/EziosWJ/edge-platform/server/internal/filemgmt"
@@ -465,6 +466,10 @@ func sqliteDependencies(t *testing.T, database *platformdatabase.Database, stora
 	if err != nil {
 		t.Fatalf("create SQLite log service: %v", err)
 	}
+	datapointService, err := datapoint.NewService(datapoint.NewRepository(database.GORM))
+	if err != nil {
+		t.Fatalf("create SQLite DataPoint service: %v", err)
+	}
 	notificationService, err := notification.NewService(notificationRepository)
 	if err != nil {
 		t.Fatalf("create SQLite notification service: %v", err)
@@ -472,7 +477,7 @@ func sqliteDependencies(t *testing.T, database *platformdatabase.Database, stora
 	return app.Dependencies{
 		Auth: authService, RBAC: rbacService, Department: deptService, User: userService,
 		Dictionary: dictionaryService, SysConfig: configService, File: fileService,
-		Log: logService, Notification: notificationService,
+		Log: logService, Notification: notificationService, DataPoint: datapointService,
 	}
 }
 

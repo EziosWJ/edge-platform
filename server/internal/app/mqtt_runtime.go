@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/EziosWJ/edge-platform/server/internal/config"
+	"github.com/EziosWJ/edge-platform/server/internal/datapoint"
 	"github.com/EziosWJ/edge-platform/server/internal/device"
 	"github.com/EziosWJ/edge-platform/server/internal/edge"
 	"github.com/EziosWJ/edge-platform/server/internal/mqtt"
@@ -28,7 +29,7 @@ func newMQTTRuntime(cfg config.MQTTConfig, runtime platformhttp.MQTTRuntime, edg
 	return newMQTTRuntimeWithServices(cfg, runtime, edgeService, nil)
 }
 
-func newMQTTRuntimeWithServices(cfg config.MQTTConfig, runtime platformhttp.MQTTRuntime, edgeService *edge.Service, deviceService *device.Service) (platformhttp.MQTTRuntime, error) {
+func newMQTTRuntimeWithServices(cfg config.MQTTConfig, runtime platformhttp.MQTTRuntime, edgeService *edge.Service, deviceService *device.Service, dataPointServices ...*datapoint.Service) (platformhttp.MQTTRuntime, error) {
 	if runtime != nil {
 		return runtime, nil
 	}
@@ -36,6 +37,11 @@ func newMQTTRuntimeWithServices(cfg config.MQTTConfig, runtime platformhttp.MQTT
 	consumer := ingressConsumer{
 		edge:   newEdgeStatusConsumer(edgeService),
 		device: newDeviceStatusConsumer(deviceService),
+	}
+	if len(dataPointServices) > 0 {
+		consumer.raw = newRawSnapshotConsumer(dataPointServices[0])
+	} else {
+		consumer.raw = newRawSnapshotConsumer(nil)
 	}
 	internalConfig := mqtt.Config{
 		Enabled:           cfg.Enabled,

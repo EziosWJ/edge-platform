@@ -15,6 +15,7 @@ import (
 	"github.com/EziosWJ/edge-platform/server/internal/app"
 	"github.com/EziosWJ/edge-platform/server/internal/auth"
 	"github.com/EziosWJ/edge-platform/server/internal/config"
+	"github.com/EziosWJ/edge-platform/server/internal/datapoint"
 	"github.com/EziosWJ/edge-platform/server/internal/dept"
 	"github.com/EziosWJ/edge-platform/server/internal/device"
 	"github.com/EziosWJ/edge-platform/server/internal/dictionary"
@@ -114,6 +115,11 @@ func main() {
 		slog.Error("build Device service", "error", err)
 		os.Exit(1)
 	}
+	datapointService, err := datapoint.NewService(datapoint.NewRepository(database.GORM))
+	if err != nil {
+		slog.Error("build DataPoint service", "error", err)
+		os.Exit(1)
+	}
 
 	application, err := app.New(*cfg, database, app.Dependencies{
 		Auth:         authService,
@@ -127,6 +133,7 @@ func main() {
 		Notification: notificationService,
 		Edge:         edgeService,
 		Device:       deviceService,
+		DataPoint:    datapointService,
 	})
 	if err != nil {
 		slog.Error("build application", "error", err)
