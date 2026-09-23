@@ -22,6 +22,9 @@ import { EdgePage } from "@/pages/edge";
 import { DevicePage } from "@/pages/device";
 import { DataPointPage } from "@/pages/datapoint";
 import { CommandPage } from "@/pages/command";
+import { HmiPagesPage } from "@/pages/hmi/management";
+import { HmiEditorPage } from "@/pages/hmi/editor";
+import { HmiRuntimePage } from "@/pages/hmi/runtime";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -39,6 +42,9 @@ export const router = createBrowserRouter([
       { path: "device", element: <DevicePage /> },
       { path: "datapoint", element: <DataPointPage /> },
       { path: "command", element: <CommandPage /> },
+      { path: "hmi/pages", element: <HmiPagesPage /> },
+      { path: "hmi/pages/:pageId/edit", element: <HmiEditorPage /> },
+      { path: "hmi/pages/:pageId/run", element: <HmiRuntimePage /> },
       { path: "settings", element: <SettingsPage /> },
       { path: "system", element: <Navigate to="/system/user" replace /> },
       { path: "system/user", element: <UsersPage /> },

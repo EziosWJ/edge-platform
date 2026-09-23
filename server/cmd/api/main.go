@@ -22,6 +22,7 @@ import (
 	"github.com/EziosWJ/edge-platform/server/internal/dictionary"
 	"github.com/EziosWJ/edge-platform/server/internal/edge"
 	"github.com/EziosWJ/edge-platform/server/internal/filemgmt"
+	"github.com/EziosWJ/edge-platform/server/internal/hmi"
 	"github.com/EziosWJ/edge-platform/server/internal/logmgmt"
 	"github.com/EziosWJ/edge-platform/server/internal/notification"
 	platformdatabase "github.com/EziosWJ/edge-platform/server/internal/platform/database"
@@ -128,6 +129,11 @@ func main() {
 		slog.Error("build command service", "error", err)
 		os.Exit(1)
 	}
+	hmiService, err := hmi.NewService(hmi.NewRepository(database.GORM), datapointService, deviceService)
+	if err != nil {
+		slog.Error("build HMI service", "error", err)
+		os.Exit(1)
+	}
 
 	application, err := app.New(*cfg, database, app.Dependencies{
 		Auth:         authService,
@@ -143,6 +149,7 @@ func main() {
 		Device:       deviceService,
 		DataPoint:    datapointService,
 		Command:      commandService,
+		HMI:          hmiService,
 		RealtimeHub:  realtimeHub,
 	})
 	if err != nil {

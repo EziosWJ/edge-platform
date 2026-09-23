@@ -1,6 +1,6 @@
 basePath: /
 definitions:
-  auth.LoginResult:
+  internal_auth.LoginResult:
     properties:
       expiresIn:
         type: integer
@@ -9,7 +9,7 @@ definitions:
       tokenValue:
         type: string
     type: object
-  auth.currentUserDeptResponse:
+  internal_auth.currentUserDeptResponse:
     properties:
       deptCode:
         type: string
@@ -18,11 +18,11 @@ definitions:
       id:
         type: integer
     type: object
-  auth.currentUserMenuResponse:
+  internal_auth.currentUserMenuResponse:
     properties:
       children:
         items:
-          $ref: '#/definitions/auth.currentUserMenuResponse'
+          $ref: '#/definitions/internal_auth.currentUserMenuResponse'
         type: array
       component:
         type: string
@@ -45,23 +45,23 @@ definitions:
       visible:
         type: integer
     type: object
-  auth.currentUserMenusResponseEnvelope:
+  internal_auth.currentUserMenusResponseEnvelope:
     properties:
       code:
         type: integer
       data:
         items:
-          $ref: '#/definitions/auth.currentUserMenuResponse'
+          $ref: '#/definitions/internal_auth.currentUserMenuResponse'
         type: array
       message:
         type: string
     type: object
-  auth.currentUserResponse:
+  internal_auth.currentUserResponse:
     properties:
       avatar:
         type: string
       dept:
-        $ref: '#/definitions/auth.currentUserDeptResponse'
+        $ref: '#/definitions/internal_auth.currentUserDeptResponse'
       email:
         type: string
       id:
@@ -76,21 +76,21 @@ definitions:
         type: string
       roles:
         items:
-          $ref: '#/definitions/auth.currentUserRoleResponse'
+          $ref: '#/definitions/internal_auth.currentUserRoleResponse'
         type: array
       username:
         type: string
     type: object
-  auth.currentUserResponseEnvelope:
+  internal_auth.currentUserResponseEnvelope:
     properties:
       code:
         type: integer
       data:
-        $ref: '#/definitions/auth.currentUserResponse'
+        $ref: '#/definitions/internal_auth.currentUserResponse'
       message:
         type: string
     type: object
-  auth.currentUserRoleResponse:
+  internal_auth.currentUserRoleResponse:
     properties:
       id:
         type: integer
@@ -99,7 +99,7 @@ definitions:
       roleName:
         type: string
     type: object
-  auth.emptyResponseEnvelope:
+  internal_auth.emptyResponseEnvelope:
     properties:
       code:
         type: integer
@@ -107,7 +107,7 @@ definitions:
       message:
         type: string
     type: object
-  auth.errorResponseEnvelope:
+  internal_auth.errorResponseEnvelope:
     properties:
       code:
         type: integer
@@ -115,23 +115,23 @@ definitions:
       message:
         type: string
     type: object
-  auth.loginRequest:
+  internal_auth.loginRequest:
     properties:
       password:
         type: string
       username:
         type: string
     type: object
-  auth.loginResponseEnvelope:
+  internal_auth.loginResponseEnvelope:
     properties:
       code:
         type: integer
       data:
-        $ref: '#/definitions/auth.LoginResult'
+        $ref: '#/definitions/internal_auth.LoginResult'
       message:
         type: string
     type: object
-  command.ApiEnvelope:
+  internal_command.ApiEnvelope:
     properties:
       code:
         type: integer
@@ -139,7 +139,7 @@ definitions:
       message:
         type: string
     type: object
-  command.CommandPage:
+  internal_command.CommandPage:
     properties:
       page:
         type: integer
@@ -147,12 +147,12 @@ definitions:
         type: integer
       records:
         items:
-          $ref: '#/definitions/command.CommandView'
+          $ref: '#/definitions/internal_command.CommandView'
         type: array
       total:
         type: integer
     type: object
-  command.CommandView:
+  internal_command.CommandView:
     properties:
       args:
         items:
@@ -195,16 +195,16 @@ definitions:
       status:
         type: string
     type: object
-  command.commandPageResponse:
+  internal_command.commandPageResponse:
     properties:
       code:
         type: integer
       data:
-        $ref: '#/definitions/command.CommandPage'
+        $ref: '#/definitions/internal_command.CommandPage'
       message:
         type: string
     type: object
-  command.createRequestDoc:
+  internal_command.createRequestDoc:
     properties:
       args:
         additionalProperties: {}
@@ -218,7 +218,7 @@ definitions:
       ttlSeconds:
         type: integer
     type: object
-  datapoint.ApiEnvelope:
+  internal_datapoint.ApiEnvelope:
     properties:
       code:
         type: integer
@@ -226,7 +226,7 @@ definitions:
       message:
         type: string
     type: object
-  datapoint.ByteOrder:
+  internal_datapoint.ByteOrder:
     enum:
     - BIG_ENDIAN
     - LITTLE_ENDIAN
@@ -234,7 +234,7 @@ definitions:
     x-enum-varnames:
     - ByteOrderBigEndian
     - ByteOrderLittleEndian
-  datapoint.Encoding:
+  internal_datapoint.Encoding:
     enum:
     - UINT16
     - INT16
@@ -250,18 +250,18 @@ definitions:
     - EncodingINT32
     - EncodingFLOAT32
     - EncodingBooleanBit
-  datapoint.SourceMapping:
+  internal_datapoint.SourceMapping:
     properties:
       address:
         type: integer
       bitIndex:
         type: integer
       byteOrder:
-        $ref: '#/definitions/datapoint.ByteOrder'
+        $ref: '#/definitions/internal_datapoint.ByteOrder'
       dataPointId:
         type: string
       encoding:
-        $ref: '#/definitions/datapoint.Encoding'
+        $ref: '#/definitions/internal_datapoint.Encoding'
       functionCode:
         type: integer
       offset:
@@ -271,9 +271,9 @@ definitions:
       sourceType:
         type: string
       wordOrder:
-        $ref: '#/definitions/datapoint.WordOrder'
+        $ref: '#/definitions/internal_datapoint.WordOrder'
     type: object
-  datapoint.ValueType:
+  internal_datapoint.ValueType:
     enum:
     - NUMBER
     - BOOLEAN
@@ -281,7 +281,7 @@ definitions:
     x-enum-varnames:
     - ValueTypeNumber
     - ValueTypeBoolean
-  datapoint.WordOrder:
+  internal_datapoint.WordOrder:
     enum:
     - HIGH_LOW
     - LOW_HIGH
@@ -289,14 +289,14 @@ definitions:
     x-enum-varnames:
     - WordOrderHighLow
     - WordOrderLowHigh
-  datapoint.createRequest:
+  internal_datapoint.createRequest:
     properties:
       deviceId:
         type: string
       enabled:
         type: boolean
       mapping:
-        $ref: '#/definitions/datapoint.SourceMapping'
+        $ref: '#/definitions/internal_datapoint.SourceMapping'
       name:
         type: string
       pointKey:
@@ -306,17 +306,17 @@ definitions:
       unit:
         type: string
       valueType:
-        $ref: '#/definitions/datapoint.ValueType'
+        $ref: '#/definitions/internal_datapoint.ValueType'
     type: object
-  datapoint.enabledRequest:
+  internal_datapoint.enabledRequest:
     properties:
       enabled:
         type: boolean
     type: object
-  datapoint.updateRequest:
+  internal_datapoint.updateRequest:
     properties:
       mapping:
-        $ref: '#/definitions/datapoint.SourceMapping'
+        $ref: '#/definitions/internal_datapoint.SourceMapping'
       name:
         type: string
       pointKey:
@@ -326,9 +326,9 @@ definitions:
       unit:
         type: string
       valueType:
-        $ref: '#/definitions/datapoint.ValueType'
+        $ref: '#/definitions/internal_datapoint.ValueType'
     type: object
-  dept.ApiEnvelope:
+  internal_dept.ApiEnvelope:
     properties:
       code:
         type: integer
@@ -336,14 +336,14 @@ definitions:
       message:
         type: string
     type: object
-  dept.ids:
+  internal_dept.ids:
     properties:
       ids:
         items:
           type: integer
         type: array
     type: object
-  dept.request:
+  internal_dept.request:
     properties:
       deptCode:
         type: string
@@ -364,12 +364,12 @@ definitions:
       status:
         type: integer
     type: object
-  dept.statusReq:
+  internal_dept.statusReq:
     properties:
       status:
         type: integer
     type: object
-  device.ApiEnvelope:
+  internal_device.ApiEnvelope:
     properties:
       code:
         type: integer
@@ -377,7 +377,7 @@ definitions:
       message:
         type: string
     type: object
-  dictionary.ApiEnvelope:
+  internal_dictionary.ApiEnvelope:
     properties:
       code:
         type: integer
@@ -385,14 +385,14 @@ definitions:
       message:
         type: string
     type: object
-  dictionary.batchRequest:
+  internal_dictionary.batchRequest:
     properties:
       ids:
         items:
           type: integer
         type: array
     type: object
-  dictionary.dataRequest:
+  internal_dictionary.dataRequest:
     properties:
       dictLabel:
         type: string
@@ -405,12 +405,12 @@ definitions:
       sortOrder:
         type: integer
     type: object
-  dictionary.statusRequest:
+  internal_dictionary.statusRequest:
     properties:
       status:
         type: integer
     type: object
-  dictionary.typeRequest:
+  internal_dictionary.typeRequest:
     properties:
       dictCode:
         type: string
@@ -423,7 +423,7 @@ definitions:
       status:
         type: integer
     type: object
-  edge.ApiEnvelope:
+  internal_edge.ApiEnvelope:
     properties:
       code:
         type: integer
@@ -431,7 +431,7 @@ definitions:
       message:
         type: string
     type: object
-  filemgmt.ApiEnvelope:
+  internal_filemgmt.ApiEnvelope:
     properties:
       code:
         type: integer
@@ -439,26 +439,26 @@ definitions:
       message:
         type: string
     type: object
-  filemgmt.batchRequest:
+  internal_filemgmt.batchRequest:
     properties:
       ids:
         items:
           type: integer
         type: array
     type: object
-  filemgmt.statusRequest:
+  internal_filemgmt.statusRequest:
     properties:
       status:
         type: integer
     type: object
-  filemgmt.updateRequest:
+  internal_filemgmt.updateRequest:
     properties:
       businessModule:
         type: string
       remark:
         type: string
     type: object
-  logmgmt.ApiEnvelope:
+  internal_hmi.apiEnvelope:
     properties:
       code:
         type: integer
@@ -466,7 +466,37 @@ definitions:
       message:
         type: string
     type: object
-  notification.ApiEnvelope:
+  internal_hmi.createRequestDoc:
+    properties:
+      description:
+        type: string
+      draftDocument:
+        additionalProperties: {}
+        type: object
+      name:
+        type: string
+    type: object
+  internal_hmi.draftRequestDoc:
+    properties:
+      document:
+        additionalProperties: {}
+        type: object
+      expectedDraftRevision:
+        type: integer
+    type: object
+  internal_hmi.metadataRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  internal_hmi.publishRequest:
+    properties:
+      expectedDraftRevision:
+        type: integer
+    type: object
+  internal_logmgmt.ApiEnvelope:
     properties:
       code:
         type: integer
@@ -474,7 +504,15 @@ definitions:
       message:
         type: string
     type: object
-  notification.publishRequest:
+  internal_notification.ApiEnvelope:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+  internal_notification.publishRequest:
     properties:
       allUsers:
         type: boolean
@@ -487,7 +525,7 @@ definitions:
           type: integer
         type: array
     type: object
-  rbac.ApiEnvelope:
+  internal_rbac.ApiEnvelope:
     properties:
       code:
         type: integer
@@ -495,14 +533,14 @@ definitions:
       message:
         type: string
     type: object
-  rbac.batchRequest:
+  internal_rbac.batchRequest:
     properties:
       ids:
         items:
           type: integer
         type: array
     type: object
-  rbac.menuRequest:
+  internal_rbac.menuRequest:
     properties:
       component:
         type: string
@@ -529,14 +567,14 @@ definitions:
       visible:
         type: integer
     type: object
-  rbac.menusRequest:
+  internal_rbac.menusRequest:
     properties:
       menuIds:
         items:
           type: integer
         type: array
     type: object
-  rbac.roleRequest:
+  internal_rbac.roleRequest:
     properties:
       remark:
         type: string
@@ -549,12 +587,12 @@ definitions:
       status:
         type: integer
     type: object
-  rbac.statusRequest:
+  internal_rbac.statusRequest:
     properties:
       status:
         type: integer
     type: object
-  realtime.TicketResponse:
+  internal_realtime.TicketResponse:
     properties:
       expiresAt:
         type: string
@@ -563,16 +601,16 @@ definitions:
       ticket:
         type: string
     type: object
-  realtime.ticketResponseEnvelope:
+  internal_realtime.ticketResponseEnvelope:
     properties:
       code:
         type: integer
       data:
-        $ref: '#/definitions/realtime.TicketResponse'
+        $ref: '#/definitions/internal_realtime.TicketResponse'
       message:
         type: string
     type: object
-  sysconfig.ApiEnvelope:
+  internal_sysconfig.ApiEnvelope:
     properties:
       code:
         type: integer
@@ -580,7 +618,7 @@ definitions:
       message:
         type: string
     type: object
-  sysconfig.configRequest:
+  internal_sysconfig.configRequest:
     properties:
       configKey:
         type: string
@@ -597,19 +635,19 @@ definitions:
       valueType:
         type: string
     type: object
-  sysconfig.idsRequest:
+  internal_sysconfig.idsRequest:
     properties:
       ids:
         items:
           type: integer
         type: array
     type: object
-  sysconfig.statusRequest:
+  internal_sysconfig.statusRequest:
     properties:
       status:
         type: integer
     type: object
-  usermgmt.ApiEnvelope:
+  internal_usermgmt.ApiEnvelope:
     properties:
       code:
         type: integer
@@ -617,38 +655,38 @@ definitions:
       message:
         type: string
     type: object
-  usermgmt.avatarRequest:
+  internal_usermgmt.avatarRequest:
     properties:
       avatar:
         type: string
     type: object
-  usermgmt.batchRequest:
+  internal_usermgmt.batchRequest:
     properties:
       ids:
         items:
           type: integer
         type: array
     type: object
-  usermgmt.passwordRequest:
+  internal_usermgmt.passwordRequest:
     properties:
       newPassword:
         type: string
       oldPassword:
         type: string
     type: object
-  usermgmt.rolesRequest:
+  internal_usermgmt.rolesRequest:
     properties:
       roleIds:
         items:
           type: integer
         type: array
     type: object
-  usermgmt.statusRequest:
+  internal_usermgmt.statusRequest:
     properties:
       status:
         type: integer
     type: object
-  usermgmt.userCreateRequest:
+  internal_usermgmt.userCreateRequest:
     properties:
       avatar:
         type: string
@@ -669,7 +707,7 @@ definitions:
       username:
         type: string
     type: object
-  usermgmt.userUpdateRequest:
+  internal_usermgmt.userUpdateRequest:
     properties:
       avatar:
         type: string
@@ -704,18 +742,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.loginRequest'
+          $ref: '#/definitions/internal_auth.loginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.loginResponseEnvelope'
+            $ref: '#/definitions/internal_auth.loginResponseEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.errorResponseEnvelope'
+            $ref: '#/definitions/internal_auth.errorResponseEnvelope'
         "429":
           description: Too Many Requests
           headers:
@@ -723,7 +761,7 @@ paths:
               description: 等待重试的秒数
               type: string
           schema:
-            $ref: '#/definitions/auth.errorResponseEnvelope'
+            $ref: '#/definitions/internal_auth.errorResponseEnvelope'
       summary: 登录
       tags:
       - 认证
@@ -733,11 +771,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.emptyResponseEnvelope'
+            $ref: '#/definitions/internal_auth.emptyResponseEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/auth.errorResponseEnvelope'
+            $ref: '#/definitions/internal_auth.errorResponseEnvelope'
       security:
       - BearerAuth: []
       summary: 退出登录
@@ -749,11 +787,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.currentUserResponseEnvelope'
+            $ref: '#/definitions/internal_auth.currentUserResponseEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/auth.errorResponseEnvelope'
+            $ref: '#/definitions/internal_auth.errorResponseEnvelope'
       security:
       - BearerAuth: []
       summary: 当前用户信息
@@ -765,11 +803,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.currentUserMenusResponseEnvelope'
+            $ref: '#/definitions/internal_auth.currentUserMenusResponseEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/auth.errorResponseEnvelope'
+            $ref: '#/definitions/internal_auth.errorResponseEnvelope'
       security:
       - BearerAuth: []
       summary: 当前用户可见菜单
@@ -783,36 +821,36 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/command.createRequestDoc'
+          $ref: '#/definitions/internal_command.createRequestDoc'
       responses:
         "202":
           description: Accepted
           schema:
-            $ref: '#/definitions/command.ApiEnvelope'
+            $ref: '#/definitions/internal_command.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/command.ApiEnvelope'
+            $ref: '#/definitions/internal_command.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/command.ApiEnvelope'
+            $ref: '#/definitions/internal_command.ApiEnvelope'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/command.ApiEnvelope'
+            $ref: '#/definitions/internal_command.ApiEnvelope'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/command.ApiEnvelope'
+            $ref: '#/definitions/internal_command.ApiEnvelope'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/command.ApiEnvelope'
+            $ref: '#/definitions/internal_command.ApiEnvelope'
         "413":
           description: Request Entity Too Large
           schema:
-            $ref: '#/definitions/command.ApiEnvelope'
+            $ref: '#/definitions/internal_command.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 创建并幂等受理 Command
@@ -830,19 +868,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/command.ApiEnvelope'
+            $ref: '#/definitions/internal_command.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/command.ApiEnvelope'
+            $ref: '#/definitions/internal_command.ApiEnvelope'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/command.ApiEnvelope'
+            $ref: '#/definitions/internal_command.ApiEnvelope'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/command.ApiEnvelope'
+            $ref: '#/definitions/internal_command.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 查询 Command 详情
@@ -883,19 +921,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/command.commandPageResponse'
+            $ref: '#/definitions/internal_command.commandPageResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/command.ApiEnvelope'
+            $ref: '#/definitions/internal_command.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/command.ApiEnvelope'
+            $ref: '#/definitions/internal_command.ApiEnvelope'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/command.ApiEnvelope'
+            $ref: '#/definitions/internal_command.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 查询 Command 分页
@@ -909,24 +947,24 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/datapoint.createRequest'
+          $ref: '#/definitions/internal_datapoint.createRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 创建 DataPoint
@@ -944,15 +982,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: DataPoint 详情
@@ -970,24 +1008,24 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/datapoint.updateRequest'
+          $ref: '#/definitions/internal_datapoint.updateRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改 DataPoint metadata 或 SourceMapping
@@ -1006,24 +1044,24 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/datapoint.enabledRequest'
+          $ref: '#/definitions/internal_datapoint.enabledRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 启用或禁用 DataPoint
@@ -1064,15 +1102,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/datapoint.ApiEnvelope'
+            $ref: '#/definitions/internal_datapoint.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: DataPoint 分页查询
@@ -1090,15 +1128,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/device.ApiEnvelope'
+            $ref: '#/definitions/internal_device.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/device.ApiEnvelope'
+            $ref: '#/definitions/internal_device.ApiEnvelope'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/device.ApiEnvelope'
+            $ref: '#/definitions/internal_device.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: Device 详情
@@ -1135,15 +1173,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/device.ApiEnvelope'
+            $ref: '#/definitions/internal_device.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/device.ApiEnvelope'
+            $ref: '#/definitions/internal_device.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/device.ApiEnvelope'
+            $ref: '#/definitions/internal_device.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: Device 分页查询
@@ -1161,15 +1199,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/edge.ApiEnvelope'
+            $ref: '#/definitions/internal_edge.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/edge.ApiEnvelope'
+            $ref: '#/definitions/internal_edge.ApiEnvelope'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/edge.ApiEnvelope'
+            $ref: '#/definitions/internal_edge.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: Edge 详情
@@ -1198,31 +1236,282 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/edge.ApiEnvelope'
+            $ref: '#/definitions/internal_edge.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/edge.ApiEnvelope'
+            $ref: '#/definitions/internal_edge.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/edge.ApiEnvelope'
+            $ref: '#/definitions/internal_edge.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: Edge 分页查询
       tags:
       - Edge
+  /api/hmi/page:
+    post:
+      parameters:
+      - description: 页面 metadata 与初始 Draft
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_hmi.createRequestDoc'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 创建 HMI 页面
+      tags:
+      - HMI
+  /api/hmi/page/{pageId}:
+    get:
+      parameters:
+      - description: 页面 UUID
+        in: path
+        name: pageId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: HMI 页面详情（含 Draft）
+      tags:
+      - HMI
+    put:
+      parameters:
+      - description: 页面 UUID
+        in: path
+        name: pageId
+        required: true
+        type: string
+      - description: 页面 metadata
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_hmi.metadataRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 更新 HMI 页面 metadata
+      tags:
+      - HMI
+  /api/hmi/page/{pageId}/draft:
+    put:
+      parameters:
+      - description: 页面 UUID
+        in: path
+        name: pageId
+        required: true
+        type: string
+      - description: Draft 与 expectedDraftRevision
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_hmi.draftRequestDoc'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 保存 HMI Draft（乐观锁）
+      tags:
+      - HMI
+  /api/hmi/page/{pageId}/publish:
+    post:
+      parameters:
+      - description: 页面 UUID
+        in: path
+        name: pageId
+        required: true
+        type: string
+      - description: expectedDraftRevision
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_hmi.publishRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 发布已保存的 HMI Draft
+      tags:
+      - HMI
+  /api/hmi/page/{pageId}/runtime:
+    get:
+      parameters:
+      - description: 页面 UUID
+        in: path
+        name: pageId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取 HMI Published Runtime bootstrap
+      tags:
+      - HMI
+  /api/hmi/page/page:
+    get:
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，1-500
+        in: query
+        name: pageSize
+        type: integer
+      - description: 页面名称包含搜索
+        in: query
+        name: name
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_hmi.apiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: HMI 页面分页列表
+      tags:
+      - HMI
   /api/realtime/ticket:
     post:
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/realtime.ticketResponseEnvelope'
+            $ref: '#/definitions/internal_realtime.ticketResponseEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/realtime.ticketResponseEnvelope'
+            $ref: '#/definitions/internal_realtime.ticketResponseEnvelope'
       security:
       - BearerAuth: []
       summary: 创建 WebSocket 一次性 ticket
@@ -1236,12 +1525,12 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/sysconfig.configRequest'
+          $ref: '#/definitions/internal_sysconfig.configRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/sysconfig.ApiEnvelope'
+            $ref: '#/definitions/internal_sysconfig.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 新增配置
@@ -1259,7 +1548,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/sysconfig.ApiEnvelope'
+            $ref: '#/definitions/internal_sysconfig.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 删除配置
@@ -1276,7 +1565,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/sysconfig.ApiEnvelope'
+            $ref: '#/definitions/internal_sysconfig.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 配置详情
@@ -1294,12 +1583,12 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/sysconfig.configRequest'
+          $ref: '#/definitions/internal_sysconfig.configRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/sysconfig.ApiEnvelope'
+            $ref: '#/definitions/internal_sysconfig.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改配置
@@ -1318,12 +1607,12 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/sysconfig.statusRequest'
+          $ref: '#/definitions/internal_sysconfig.statusRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/sysconfig.ApiEnvelope'
+            $ref: '#/definitions/internal_sysconfig.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改配置状态
@@ -1337,12 +1626,12 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/sysconfig.idsRequest'
+          $ref: '#/definitions/internal_sysconfig.idsRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/sysconfig.ApiEnvelope'
+            $ref: '#/definitions/internal_sysconfig.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 批量删除配置
@@ -1360,7 +1649,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/sysconfig.ApiEnvelope'
+            $ref: '#/definitions/internal_sysconfig.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 按配置键查询
@@ -1381,7 +1670,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/sysconfig.ApiEnvelope'
+            $ref: '#/definitions/internal_sysconfig.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 配置分页
@@ -1395,16 +1684,16 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dept.request'
+          $ref: '#/definitions/internal_dept.request'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 新增部门
@@ -1422,7 +1711,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 删除部门
@@ -1439,11 +1728,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 部门详情
@@ -1461,16 +1750,16 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dept.request'
+          $ref: '#/definitions/internal_dept.request'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改部门
@@ -1489,16 +1778,16 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dept.statusReq'
+          $ref: '#/definitions/internal_dept.statusReq'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改部门状态
@@ -1512,16 +1801,16 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dept.ids'
+          $ref: '#/definitions/internal_dept.ids'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 批量删除部门
@@ -1533,7 +1822,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 启用部门树
@@ -1566,11 +1855,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 部门分页
@@ -1582,7 +1871,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dept.ApiEnvelope'
+            $ref: '#/definitions/internal_dept.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 部门树
@@ -1596,20 +1885,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dictionary.dataRequest'
+          $ref: '#/definitions/internal_dictionary.dataRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 新增字典数据
@@ -1627,11 +1916,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 删除字典数据
@@ -1648,15 +1937,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 字典数据详情
@@ -1674,20 +1963,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dictionary.dataRequest'
+          $ref: '#/definitions/internal_dictionary.dataRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改字典数据
@@ -1701,20 +1990,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dictionary.batchRequest'
+          $ref: '#/definitions/internal_dictionary.batchRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 批量删除字典数据
@@ -1751,15 +2040,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 字典数据分页
@@ -1773,20 +2062,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dictionary.typeRequest'
+          $ref: '#/definitions/internal_dictionary.typeRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 新增字典类型
@@ -1804,11 +2093,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 删除字典类型
@@ -1825,15 +2114,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 字典类型详情
@@ -1851,20 +2140,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dictionary.typeRequest'
+          $ref: '#/definitions/internal_dictionary.typeRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改字典类型
@@ -1883,20 +2172,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dictionary.statusRequest'
+          $ref: '#/definitions/internal_dictionary.statusRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改字典类型状态
@@ -1910,20 +2199,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dictionary.batchRequest'
+          $ref: '#/definitions/internal_dictionary.batchRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 批量删除字典类型
@@ -1956,15 +2245,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 字典类型分页
@@ -1982,11 +2271,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/dictionary.ApiEnvelope'
+            $ref: '#/definitions/internal_dictionary.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 按编码查询启用字典项
@@ -2004,15 +2293,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 删除文件
@@ -2029,15 +2318,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 文件详情
@@ -2055,20 +2344,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/filemgmt.updateRequest'
+          $ref: '#/definitions/internal_filemgmt.updateRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改文件元信息
@@ -2092,11 +2381,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 下载文件
@@ -2115,20 +2404,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/filemgmt.statusRequest'
+          $ref: '#/definitions/internal_filemgmt.statusRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改文件状态
@@ -2152,11 +2441,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 预览文件
@@ -2170,20 +2459,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/filemgmt.batchRequest'
+          $ref: '#/definitions/internal_filemgmt.batchRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 批量删除文件
@@ -2220,15 +2509,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 文件分页
@@ -2261,23 +2550,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "413":
           description: Request Entity Too Large
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "503":
           description: Service Unavailable
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 上传文件
@@ -2308,23 +2597,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "413":
           description: Request Entity Too Large
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
         "503":
           description: Service Unavailable
           schema:
-            $ref: '#/definitions/filemgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_filemgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 批量上传文件
@@ -2342,15 +2631,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 登录日志详情
@@ -2362,15 +2651,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 清空登录日志
@@ -2403,15 +2692,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 登录日志分页
@@ -2425,20 +2714,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rbac.menuRequest'
+          $ref: '#/definitions/internal_rbac.menuRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 新增菜单
@@ -2456,11 +2745,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 删除菜单
@@ -2477,11 +2766,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 菜单详情
@@ -2499,20 +2788,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rbac.menuRequest'
+          $ref: '#/definitions/internal_rbac.menuRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改菜单
@@ -2531,20 +2820,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rbac.statusRequest'
+          $ref: '#/definitions/internal_rbac.statusRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改菜单状态
@@ -2558,20 +2847,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rbac.batchRequest'
+          $ref: '#/definitions/internal_rbac.batchRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 批量删除菜单
@@ -2608,15 +2897,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 菜单分页
@@ -2628,11 +2917,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 菜单树
@@ -2646,12 +2935,12 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/notification.publishRequest'
+          $ref: '#/definitions/internal_notification.publishRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/notification.ApiEnvelope'
+            $ref: '#/definitions/internal_notification.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 发布站内通知
@@ -2672,7 +2961,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/notification.ApiEnvelope'
+            $ref: '#/definitions/internal_notification.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 通知管理分页
@@ -2690,7 +2979,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/notification.ApiEnvelope'
+            $ref: '#/definitions/internal_notification.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 通知详情
@@ -2708,7 +2997,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/notification.ApiEnvelope'
+            $ref: '#/definitions/internal_notification.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 标记通知已读
@@ -2729,7 +3018,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/notification.ApiEnvelope'
+            $ref: '#/definitions/internal_notification.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 我的通知分页
@@ -2741,7 +3030,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/notification.ApiEnvelope'
+            $ref: '#/definitions/internal_notification.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 全部标记已读
@@ -2753,7 +3042,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/notification.ApiEnvelope'
+            $ref: '#/definitions/internal_notification.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 未读通知数
@@ -2771,15 +3060,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 操作日志详情
@@ -2791,15 +3080,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 清空操作日志
@@ -2836,15 +3125,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/logmgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_logmgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 操作日志分页
@@ -2858,20 +3147,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rbac.roleRequest'
+          $ref: '#/definitions/internal_rbac.roleRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 新增角色
@@ -2889,11 +3178,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 删除角色
@@ -2910,15 +3199,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 角色详情
@@ -2936,20 +3225,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rbac.roleRequest'
+          $ref: '#/definitions/internal_rbac.roleRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改角色
@@ -2968,16 +3257,16 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rbac.menusRequest'
+          $ref: '#/definitions/internal_rbac.menusRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 分配角色菜单
@@ -2996,20 +3285,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rbac.statusRequest'
+          $ref: '#/definitions/internal_rbac.statusRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改角色状态
@@ -3023,20 +3312,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/rbac.batchRequest'
+          $ref: '#/definitions/internal_rbac.batchRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 批量删除角色
@@ -3048,11 +3337,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 启用角色选项
@@ -3085,15 +3374,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/rbac.ApiEnvelope'
+            $ref: '#/definitions/internal_rbac.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 角色分页
@@ -3107,20 +3396,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/usermgmt.userCreateRequest'
+          $ref: '#/definitions/internal_usermgmt.userCreateRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 新增用户
@@ -3138,15 +3427,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 删除用户
@@ -3163,15 +3452,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 用户详情
@@ -3189,20 +3478,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/usermgmt.userUpdateRequest'
+          $ref: '#/definitions/internal_usermgmt.userUpdateRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改用户
@@ -3220,15 +3509,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 重置用户密码
@@ -3247,20 +3536,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/usermgmt.rolesRequest'
+          $ref: '#/definitions/internal_usermgmt.rolesRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 分配用户角色
@@ -3279,20 +3568,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/usermgmt.statusRequest'
+          $ref: '#/definitions/internal_usermgmt.statusRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 修改用户状态
@@ -3306,20 +3595,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/usermgmt.batchRequest'
+          $ref: '#/definitions/internal_usermgmt.batchRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 批量删除用户
@@ -3333,20 +3622,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/usermgmt.avatarRequest'
+          $ref: '#/definitions/internal_usermgmt.avatarRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 当前用户修改头像
@@ -3360,20 +3649,20 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/usermgmt.passwordRequest'
+          $ref: '#/definitions/internal_usermgmt.passwordRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 当前用户修改密码
@@ -3418,15 +3707,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/usermgmt.ApiEnvelope'
+            $ref: '#/definitions/internal_usermgmt.ApiEnvelope'
       security:
       - BearerAuth: []
       summary: 用户分页

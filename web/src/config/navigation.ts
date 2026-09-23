@@ -1,4 +1,4 @@
-import { Bell, ClipboardList, Cpu, Gauge, LayoutDashboard, Server, type LucideIcon } from "lucide-react";
+import { Bell, ClipboardList, Cpu, Gauge, LayoutDashboard, MonitorCog, Server, type LucideIcon } from "lucide-react";
 import { getMenuIcon } from "@/lib/menu-icons";
 import type { CurrentUserMenu } from "@/types";
 
@@ -17,6 +17,7 @@ export const defaultNavItems: NavItem[] = [
   { label: "Device 管理", path: "/device", icon: Cpu },
   { label: "DataPoint 管理", path: "/datapoint", icon: Gauge },
   { label: "Command 管理", path: "/command", icon: ClipboardList },
+  { label: "HMI 页面", path: "/hmi/pages", icon: MonitorCog },
   { label: "我的通知", path: "/notifications", icon: Bell },
 ];
 
@@ -108,6 +109,7 @@ export const staticRouteTitleMap: Record<string, string> = {
   "/device": "Device 管理",
   "/datapoint": "DataPoint 管理",
   "/command": "Command 管理",
+  "/hmi/pages": "HMI 页面",
   "/notifications": "我的通知",
   "/settings": "系统设置",
   "/system": "系统管理",

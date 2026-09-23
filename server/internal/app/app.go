@@ -19,6 +19,7 @@ import (
 	"github.com/EziosWJ/edge-platform/server/internal/dictionary"
 	"github.com/EziosWJ/edge-platform/server/internal/edge"
 	"github.com/EziosWJ/edge-platform/server/internal/filemgmt"
+	"github.com/EziosWJ/edge-platform/server/internal/hmi"
 	"github.com/EziosWJ/edge-platform/server/internal/logmgmt"
 	"github.com/EziosWJ/edge-platform/server/internal/notification"
 	platformhttp "github.com/EziosWJ/edge-platform/server/internal/platform/http"
@@ -45,6 +46,7 @@ type Dependencies struct {
 	Device       *device.Service
 	DataPoint    *datapoint.Service
 	Command      *command.Service
+	HMI          *hmi.Service
 	RealtimeHub  *realtime.Hub
 	MQTT         platformhttp.MQTTRuntime
 }
@@ -207,6 +209,15 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 		commands := router.Group("/api/command")
 		commands.Use(auth.BearerMiddleware(deps.Auth))
 		command.RegisterRoutes(commands, commandHandler)
+	}
+	if deps.HMI != nil {
+		hmiHandler, err := hmi.NewHandler(deps.HMI, deps.RBAC)
+		if err != nil {
+			return nil, fmt.Errorf("create HMI handler: %w", err)
+		}
+		pages := router.Group("/api/hmi/page")
+		pages.Use(auth.BearerMiddleware(deps.Auth))
+		hmi.RegisterRoutes(pages, hmiHandler)
 	}
 
 	var realtimeService *realtime.Service

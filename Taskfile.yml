@@ -128,6 +128,17 @@ tasks:
     cmds:
       - node scripts/m6-command-acceptance.mjs
 
+  m8:hmi-acceptance:
+    desc: Run the isolated real PostgreSQL, Mosquitto, Edge Collector, Modbus, Cloud and browser HMI acceptance
+    dir: '{{.ROOT_DIR}}'
+    preconditions:
+      - sh: test -f scripts/m8-hmi-acceptance.mjs
+        msg: scripts/m8-hmi-acceptance.mjs is missing
+      - sh: test -f docs/acceptance/m8-hmi.md
+        msg: docs/acceptance/m8-hmi.md is missing
+    cmds:
+      - node scripts/m8-hmi-acceptance.mjs
+
   frontend:lint:
     desc: Run web lint
     dir: web
