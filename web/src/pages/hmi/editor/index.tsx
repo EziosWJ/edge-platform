@@ -328,8 +328,6 @@ export function HmiEditorPage() {
   if (loading) return <div className="p-card text-sm text-text-secondary">正在加载 HMI 页面…</div>;
   if (error || !page) return <EmptyState title="HMI 页面无法打开" description={error || "找不到指定页面。"} actionText="返回页面列表" onAction={() => navigate("/hmi/pages")} />;
 
-  const componentType: HmiNodeType = selectedNode?.type ?? "text";
-
   return <div className="flex min-h-[calc(100vh-120px)] flex-col gap-space-4">
     <PageHeader title={page.name} description={`修订 ${page.draftRevision} · ${dirty ? "有未保存更改" : "草稿已同步"}`} actions={<><Button variant="secondary" onClick={() => navigate("/hmi/pages")} disabled={dirty}>返回列表</Button><Button variant="secondary" onClick={undo} disabled={historyPastRef.current.length === 0} aria-label="撤销"><Undo2 className="h-4 w-4" aria-hidden />撤销</Button><Button variant="secondary" onClick={redo} disabled={historyFutureRef.current.length === 0} aria-label="重做"><Redo2 className="h-4 w-4" aria-hidden />重做</Button><Button variant="primary" onClick={() => void saveDraft()} disabled={!dirty || saving}><Save className="h-4 w-4" aria-hidden />{saving ? "保存中" : "保存草稿"}</Button><Button variant="secondary" onClick={() => void publish()} disabled={dirty || publishing || !canPublish}><Upload className="h-4 w-4" aria-hidden />{publishing ? "发布中" : "发布"}</Button></>} />
     <div className="flex min-h-0 flex-1 overflow-hidden rounded-admin border border-border bg-surface">

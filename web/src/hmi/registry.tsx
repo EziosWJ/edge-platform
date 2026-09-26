@@ -3,7 +3,6 @@ import type { DataPointRecord, DataPointValueType } from "@/types/datapoint";
 import type { DataPointCurrentValue } from "@/types/datapoint";
 import type {
   CommandBinding,
-  DataPointBinding,
   GaugeNodeProps,
   HmiBinding,
   HmiNode,
@@ -68,11 +67,6 @@ function QualityMark({ value }: { value?: DataPointCurrentValue }) {
   if (!value || value.quality === "NO_DATA") return <span className="text-text-tertiary">无数据</span>;
   if (value.quality === "BAD") return <span className="text-error">数据无效</span>;
   return null;
-}
-
-function valueBinding(node: HmiNode): DataPointBinding | undefined {
-  const binding = node.bindings.value;
-  return binding?.kind === "datapoint" ? binding : undefined;
 }
 
 function commandBinding(node: HmiNode, slot: string): CommandBinding | undefined {
