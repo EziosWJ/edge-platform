@@ -176,7 +176,7 @@ _Avoid_：MQTT publish record、直接使用 sourceDeviceId 作为业务控制�
 **Command Delivery**：Command 的短生命周期可靠下行传输记录，保存冻结 topic 与完全相同的 MQTT payload，在 expiresAt 前有界重发。MQTT PUBACK 只表示 Broker 收到，不能把 Command 解释为 ACCEPTED；只有 Edge command-result 可以改变业务执行状态。
 _Avoid_：通用 Cloud outbox、把 PUBACK 当设备执行确认
 
-**Command Result**：Edge Collector 对既有 Command 的执行事实，包括 ACCEPTED/REJECTED/EXPIRED/SUCCEEDED/FAILED 及来源时间、result/error。Cloud 必须校验 commandId、冻结 route 和 name；FINAL 可以先于 ACCEPTED 到达，终态采用 first-terminal-wins。
+**Command Result**：Edge Collector 对既有 Command 的执行事实，包括 ACCEPTED/REJECTED/EXPIRED/SUCCEEDED/FAILED 及来源时间、result/error。`edgeReceivedAt` 表示 Command 在 Edge 首次接收/准入的时间，并在同一 Command 的 ACCEPTED/FINAL 中保持不变；`startedAt`、`completedAt` 是 Edge 执行时间；`resultReceivedAt` 是 Cloud 收到该结果的时间。结果 envelope 的 `timestamp` 表示 Edge 发布/生成该结果的时间。Cloud 必须校验 commandId、冻结 route 和 name；FINAL 可以先于 ACCEPTED 到达，终态采用 first-terminal-wins。
 _Avoid_：Cloud timeout 推导出的执行结果
 
 **HMI**：基于 DataPoint、M5 Realtime 与 M6 Command 的组态展示/控制页面。M8 的硬依赖是 M4/M5/M6，不依赖 M7 History & Event；编辑器使用 AntV X6，但持久化使用自定义 versioned canonical schema，不把 X6 JSON 当领域模型。

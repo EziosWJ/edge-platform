@@ -2,8 +2,11 @@
 
 - Status: Accepted
 - Date: 2026-09-22
+- Revision: 2026-09-22（M5 完成后的 M6 契约补充）
 
 M6 在现有 Edge Collector ADR-0017 的 MQTT command contract 之上完成 Cloud -> Edge -> Cloud 控制闭环。Cloud 不重新设计 Edge command runtime，而是利用 Collector 已有的 `device-command/v1`、`device-command-result/v1`、command journal、QoS1 幂等和 reliable final-result 语义。
+
+M5 已完成并关闭。M6 复用 M5 已完成的认证/session 基础设施，但 Command 状态第一版继续由 REST 查询和约 2 秒轮询呈现，不把 Command 状态接入 M5 的 WebSocket latest-state 通道。
 
 ## 1. Scope and architecture
 
@@ -76,6 +79,8 @@ Cloud 使用自己的时间生成：
 
 `args` 必须是 JSON object。最终 `device-command/v1` payload 必须满足 Collector 现有 256 KiB command payload 限制。
 
+请求指纹在入库前确定性规范化：省略的 `ttlSeconds` 先归一化为 30；`args` 递归按 object key 排序、保留 array 顺序，并保留 JSON number 的精确表示，禁止经 `float64` 往返后再计算 hash。相同 commandId 的并发创建以数据库唯一约束和事务重试收敛到同一条 Command；不同请求仍返回 409。创建后冻结的 canonical args 和完整 MQTT payload 不得重新序列化成另一种表示。
+
 Cloud idempotency hash 至少包含：
 - requestedBy userId
 - Cloud deviceId
@@ -104,7 +109,7 @@ M6 的真实控制必须使用 server-side authorization，不能只依赖前端
 
 `POST /api/command` 必须在服务器验证 execute permission。
 
-如果平台现有 RBAC 只有 menu permissionCode 而没有后端通用 permission middleware，M6 只补一个窄的 permission authorization seam，不重写整个 RBAC。
+权限判断读取当前有效 User -> Role -> permissionCode 关系；菜单的 `visible`、前端 PermissionGuard 或按钮隐藏只能改善体验，不能作为授权依据。`command:list`、`command:detail`、`command:execute` 分别在服务端检查；用户、角色或权限被禁用后，后续请求按现有认证/授权语义拒绝。若平台现有 RBAC 只有 menu permissionCode 而没有后端通用 permission middleware，M6 只补一个窄的 permission authorization seam，不重写整个 RBAC。
 
 第一次 Command 创建必须在同一个 PostgreSQL transaction 中原子写入：
 - Command
@@ -184,6 +189,8 @@ ACCEPTED
 - ACK
 - metric + structured error/contract violation
 
+终态语义投影包含 status、result、errorType/errorMessage 和 Edge source timestamps。Cloud `resultReceivedAt` 是观测元数据：首次接受该结果时记录，重复消息不得用新的 Cloud 时间覆盖它，也不参与相同终态比较。相同 status 但 result/error/Edge timestamps 不同也属于冲突，仍由第一个已提交的终态获胜；相同终态语义投影重复到达则幂等。MQTT `messageId` 不参与 Command 幂等或终态比较。
+
 ## 7. Cloud delivery semantics
 
 M6 使用专用 `command_delivery`，不建立通用 Cloud outbox。
@@ -212,6 +219,8 @@ delivery 持续到：
 
 收到合法的 ACCEPTED、REJECTED、EXPIRED、SUCCEEDED、FAILED 中任一 result 后停止进一步发送。
 
+投递 worker 在每次尝试前必须重新校验 Command 仍为可投递的 `PENDING` 且 Cloud now 严格早于 `expiresAt`。结果投影、停止后续 delivery 与 delivery row 的结束必须在同一个 PostgreSQL transaction 中完成并以行锁串行化；网络 publish 不得持有数据库锁。结果提交与 publish 竞态中允许已经发出的单个 QoS1 packet 到达，但它不能改变已提交的终态，也不能重新创建 delivery。
+
 ## 8. MQTT PUBACK
 
 Command publish 使用 QoS1。
@@ -229,6 +238,10 @@ PUBACK 只更新 delivery attempt/transport 事实，不删除 delivery，也不
 Cloud 不因为沉默推断 Edge 已 EXPIRED、FAILED 或未执行。
 
 如果以后迟到合法 result 到达，仍允许它更新 PENDING Command。
+
+到期事务只有在 Command 仍为 `PENDING` 且没有合法 result 已提交时才可设置 `deliveryExpiredAt`。结果与到期同时竞争时，以先提交的合法结果或到期更新为准；后到者必须保持已提交事实，不得把 `PENDING` 伪造为 Edge `EXPIRED`。
+
+合法 result 的持久化与 MQTT ACK 有明确边界：Cloud 必须在 Command 状态、结果字段和 delivery 停止事实提交成功后才 ACK；未知 command、路由/name/契约不匹配等永久无效消息可以在记录有界指标后 ACK；数据库或其他基础设施暂时失败必须不 ACK，以便沿用 MQTT QoS1 重投。
 
 ## 9. MQTT runtime boundary
 
@@ -276,6 +289,8 @@ route/name mismatch、非法 status 或稳定 contract mismatch：
 
 Command 幂等不依赖 messageId。
 
+对已存在 Command 的合法 result，Cloud 在事务内锁定 Command，重新校验冻结 route/name 和当前状态，再执行状态/结果投影并结束 delivery。事务提交前不得 ACK。未知 commandId 不创建 Command，也不改变已有 Command。
+
 ## 11. Result time semantics
 
 Cloud 与 Edge 时间事实严格区分：
@@ -285,14 +300,14 @@ Cloud generated：
 - expiresAt
 
 Edge result source times：
-- edgeReceivedAt（wire data.receivedAt）
+- edgeReceivedAt（wire `data.receivedAt`，命令在 Edge 首次被接收/准入的时间；同一 Command 的 ACCEPTED 与 FINAL 必须携带同一值）
 - startedAt
 - completedAt
 
 Cloud MQTT observation：
 - resultReceivedAt = Cloud Ingest ReceivedAt
 
-不使用 source time 代替 Cloud receive time。
+Envelope `timestamp` 表示该结果消息在 Edge 侧发布/生成的时间，不替代 `data.receivedAt`。Cloud 不使用任何 Edge source time 代替自己的 `resultReceivedAt`。M6 实施前必须确认 Collector 在生成 FINAL 时保留首次接收时间；若 wire 实现仍把完成时间写入 `data.receivedAt`，需先修正 Collector contract/实现并补对应验收，Cloud 不得自行推算 Edge 接收时间。
 
 ## 12. Result and error persistence
 
@@ -314,6 +329,8 @@ Cloud 不执行 result，不解释为 HTML。
 
 CommandResult 总 payload 与 Collector 当前 final-result 可靠容量 contract 对齐，第一版按 256 KiB 上限处理。
 
+Cloud 在 MQTT parser 和领域校验阶段都必须执行该上限及 required-field 校验；超限或稳定 contract 违规不得进入 Command projection。
+
 ## 13. Cloud restart recovery
 
 Command 与 command_delivery 都持久化。
@@ -324,6 +341,8 @@ Cloud restart 后：
 - delivery 已到期：保持 PENDING + deliveryExpiredAt，不重新发送
 
 Cloud restart 不改变 commandId，也不生成第二个业务 Command。
+
+重启恢复 worker 与正常投递共用同一套状态/到期行锁规则；扫描到的 delivery 在重新发送前必须再次检查 `PENDING`、未到期和未被合法 result 结束。
 
 ## 14. Edge and Device status are not hard gates
 
@@ -387,18 +406,22 @@ Browser/API
 - unauthorized user server-side 403
 - HTTP response 丢失后以同 commandId retry，只产生一次真实 Modbus 控制
 - same commandId different request -> 409
+- omitted/default TTL and canonical JSON number/key handling are deterministic; concurrent same-commandId creation produces one Command
 - Broker 暂时不可用时 Command/delivery survive，恢复后在 TTL 内执行
 - Cloud publish 后重启，恢复发送同 commandId/同 payload
 - FINAL 先于 ACCEPTED 时 Cloud 直接进入正确 terminal
 - late ACCEPTED 不回退 terminal
 - duplicate same FINAL 幂等
 - conflicting FINAL first-terminal-wins 并可观测
+- same terminal status with different result/error/timestamps remains first-terminal-wins
+- result-vs-publish and result-vs-expiry races are covered by deterministic transaction tests
 - Cloud 收到 ACCEPTED 后重启不会导致第二次真实执行
 - unknown commandId result 不创建 Command
 - route/name mismatch ACK+reject，不形成 reconnect poison loop
 - delivery TTL 到期无 result -> PENDING + deliveryExpiredAt，不伪造 EXPIRED
 - Edge 明确返回 EXPIRED -> Command EXPIRED
 - result/error/timestamps 正确持久化和显示
+- `data.receivedAt` remains the Edge first-received time across ACCEPTED/FINAL, while envelope timestamp and Cloud resultReceivedAt retain their separate meanings
 
 ## Consequences
 

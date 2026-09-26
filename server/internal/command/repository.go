@@ -273,7 +273,9 @@ func utcResultTime(value *time.Time) *time.Time {
 	if value == nil {
 		return nil
 	}
-	instant := value.UTC()
+	// PostgreSQL timestamptz stores microseconds. Normalize before persistence
+	// and semantic comparison so an identical Edge instant survives a round trip.
+	instant := value.UTC().Truncate(time.Microsecond)
 	return &instant
 }
 
@@ -315,7 +317,7 @@ func sameInstant(left, right *time.Time) bool {
 	if left == nil || right == nil {
 		return left == nil && right == nil
 	}
-	return left.UTC().Equal(right.UTC())
+	return left.UTC().Truncate(time.Microsecond).Equal(right.UTC().Truncate(time.Microsecond))
 }
 
 func sameOptionalString(left, right *string) bool {

@@ -316,7 +316,7 @@ function cloudEnv() {
     APP_MQTT__PREFIX: topicPrefix,
     APP_MQTT__USERNAME: "",
     APP_MQTT__PASSWORD: "",
-    GOCACHE: path.join(tempRoot, "go-cache-cloud"),
+    GOCACHE: process.env.GOCACHE ?? path.join(tempRoot, "go-cache-cloud"),
   };
 }
 
@@ -332,7 +332,9 @@ function collectorEnv() {
     APP_FILE__STORAGE_ROOT: path.join(tempRoot, "collector-files"),
     APP_LOG__LEVEL: "info",
     APP_LOG__FORMAT: "text",
-    GOCACHE: path.join(tempRoot, "go-cache-collector"),
+    APP_ACQUISITION__SCRIPT__MAX_EXECUTION_MS: "15000",
+    APP_ACQUISITION__SCRIPT__MAX_TOTAL_DELAY_MS: "8000",
+    GOCACHE: process.env.GOCACHE ?? path.join(tempRoot, "go-cache-collector"),
   };
 }
 
@@ -500,7 +502,11 @@ function commandSource() {
 def command(ctx, name, args):
     if name != "set_clock":
         return None
-    ctx.delay(500)
+    if args.get("holdForRestart", False):
+        for _ in range(6):
+            ctx.delay(1000)
+    else:
+        ctx.delay(500)
     ctx.write_registers(100, [args["hour"], args["minute"], args["second"]])
     return {"written": [args["hour"], args["minute"], args["second"]]}
 `;
@@ -751,8 +757,8 @@ async function restartCollector() {
 }
 
 async function stopBroker() {
+  await compose("kill", "-s", "SIGKILL", "broker");
   await stopResultSubscriber();
-  await compose("stop", "broker");
 }
 
 async function startBroker() {
@@ -793,7 +799,7 @@ async function runUIAcceptance(deviceID) {
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
     await page.goto(`${webURL}/login`, { waitUntil: "networkidle" });
     await page.getByLabel("用户名").fill("admin");
-    await page.getByLabel("密码").fill("admin123");
+    await page.locator("#password").fill("admin123");
     await page.getByRole("button", { name: "登录" }).click();
     await page.waitForURL(/\/dashboard/);
     await page.goto(`${webURL}/device`, { waitUntil: "networkidle" });
@@ -938,10 +944,11 @@ async function runAcceptance() {
   log(JSON.stringify({ scenario: "06-final-before-accepted-first-terminal-wins", status: "PASS", commandId: orderingID, resultReceivedAt: firstProjected.resultReceivedAt }));
 
   const unknownID = randomUUID();
+  const beforeUnknown = await commandFacts(unknownID);
   log(`NEGATIVE PROBE unknown commandId direct MQTT commandId=${unknownID}`);
   await publishMQTT(commandFilter.replace("/command", "/command-result"), commandResultPayload(unknownID, "SUCCEEDED"));
   await assertMetricClassification("unknown_command");
-  assert.deepEqual(await commandFacts(unknownID), { commands: 0, deliveries: 0, audits: 0 });
+  assert.deepEqual(await commandFacts(unknownID), { commands: 0, deliveries: 0, audits: beforeUnknown.audits });
   const beforeNegative = await api(cloudURL, cloudToken, `/api/command/${firstCommandID}`);
   log("NEGATIVE PROBE route mismatch direct MQTT");
   await publishMQTT(`${topicPrefix}/wrong-edge/device/${sourceDeviceID}/command-result`, commandResultPayload(firstCommandID, "SUCCEEDED", { edgeId: "other-edge", result: beforeNegative.result }));
@@ -976,17 +983,27 @@ async function runAcceptance() {
   const acceptedRestartID = randomUUID();
   const acceptedStart = resultSubscriber.subscriber.messages.length;
   const acceptedBaseline = simulatorWriteCount();
-  await postCommand(acceptedRestartID, device.deviceId, { hour: 15, minute: 25, second: 35 });
+  await postCommand(acceptedRestartID, device.deviceId, { hour: 15, minute: 25, second: 35, holdForRestart: true });
   await waitResult(acceptedRestartID, "ACCEPTED", acceptedStart);
   await waitCommand(acceptedRestartID, (value) => value?.status === "ACCEPTED", "Cloud ACCEPTED before restart");
   await stopBroker();
+  assert.equal(simulatorWriteCount(), acceptedBaseline, "control completed before broker outage");
   await stopProcess(cloudProcess, "SIGKILL");
   cloudProcess = undefined;
   await waitForHTTPDown(`${cloudURL}/health`);
   await eventually("Collector completes accepted command while Cloud is down", () => simulatorWriteCount(), (count) => count === acceptedBaseline + 1, 60000);
+  await eventually("Collector FINAL persisted while Broker is down", async () => Number((await postgresQuery(collectorDatabase,
+    `SELECT count(*) FROM mqtt_outbox WHERE command_id=${sqlLiteral(acceptedRestartID)} AND message_type='COMMAND_RESULT'`)).trim()), (count) => count === 1, 30000);
+  await stopProcess(collectorProcess, "SIGTERM");
+  collectorProcess = undefined;
+  await waitForHTTPDown(`${collectorURL}/health`);
   await startBroker();
   await startCloud();
+  await waitForHTTP(`${cloudURL}/ready`, cloudProcess);
   cloudToken = await login(cloudURL, "admin", "admin123");
+  await startCollector();
+  collectorToken = await login(collectorURL, "admin", "admin123");
+  await configureCollector();
   await waitCommand(acceptedRestartID, (value) => value?.status === "SUCCEEDED", "accepted command after Cloud restart");
   assert.equal(simulatorWriteCount(), acceptedBaseline + 1);
   log(JSON.stringify({ scenario: "09-accepted-cloud-restart", status: "PASS", commandId: acceptedRestartID, modbusWrites: simulatorWriteCount() - acceptedBaseline }));

@@ -185,6 +185,18 @@ func TestRepositoryProjectResultRejectsMismatchedAcceptedReceivedAt(t *testing.T
 	}
 }
 
+func TestSameInstantUsesPostgresMicrosecondPrecision(t *testing.T) {
+	fromEdge := time.Date(2026, 9, 26, 14, 2, 14, 242222579, time.UTC)
+	stored := fromEdge.Truncate(time.Microsecond)
+	if !sameInstant(&stored, &fromEdge) {
+		t.Fatal("same Edge instant changed after PostgreSQL microsecond round trip")
+	}
+	different := stored.Add(time.Microsecond)
+	if sameInstant(&stored, &different) {
+		t.Fatal("different Edge instants must remain distinct")
+	}
+}
+
 func TestRepositoryProjectResultClassifiesLateAccepted(t *testing.T) {
 	db := openCommandTestDB(t)
 	repository := NewRepository(db)
